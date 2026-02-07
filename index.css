@@ -1,0 +1,5 @@
+/* Estilos base; el resto usa Tailwind desde index.html */
+*:focus-visible {
+  outline: 2px solid rgba(255, 0, 127, 0.6);
+  outline-offset: 2px;
+}

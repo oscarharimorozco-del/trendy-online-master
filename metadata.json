@@ -1,0 +1,9 @@
+
+{
+  "name": "Trendy Online Master Edition",
+  "description": "Plataforma inteligente de moda masculina con gestión autónoma por IA.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
