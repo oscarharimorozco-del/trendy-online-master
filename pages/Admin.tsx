@@ -136,9 +136,9 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
       }
       setPendingFiles([]);
       alert("Inventario sincronizado con éxito.");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload error:", error);
-      alert("Error al subir archivos.");
+      alert(`Error al subir archivos: ${error.message || JSON.stringify(error)}`);
     } finally {
       setIsSaving(false);
     }
@@ -187,9 +187,9 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
       setManualName('');
       setManualImg('');
       alert("¡Pieza añadida con éxito!");
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Error al guardar el producto.");
+      alert(`Error al guardar el producto: ${e.message || JSON.stringify(e)}`);
     } finally {
       setIsSaving(false);
     }
