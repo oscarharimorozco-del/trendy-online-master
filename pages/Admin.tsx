@@ -102,13 +102,13 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
           const blob = new Blob([byteArray], { type: f.src.split(';')[0].split(':')[1] });
 
           const { data, error } = await supabase.storage
-            .from('images')
+            .from('imagenes')
             .upload(filePath, blob);
 
           if (error) throw error;
 
           const { data: { publicUrl } } = supabase.storage
-            .from('images')
+            .from('imagenes')
             .getPublicUrl(filePath);
 
           finalUrl = publicUrl;
@@ -166,10 +166,10 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         const byteArray = new Uint8Array(byteNumbers);
         const blob = new Blob([byteArray], { type: manualImg.split(';')[0].split(':')[1] });
 
-        const { error } = await supabase.storage.from('images').upload(filePath, blob);
+        const { error } = await supabase.storage.from('imagenes').upload(filePath, blob);
         if (error) throw error;
 
-        const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
+        const { data: { publicUrl } } = supabase.storage.from('imagenes').getPublicUrl(filePath);
         finalUrl = publicUrl;
       }
 
