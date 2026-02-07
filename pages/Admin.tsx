@@ -23,6 +23,7 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const { addProduct, addToGallery } = useProducts();
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const manualUploadRef = useRef<HTMLInputElement>(null);
 
   // Estados para Entrada Directa (Manual)
   const [manualName, setManualName] = useState('');
@@ -148,13 +149,37 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
     setIsSaving(true);
     try {
+      let finalUrl = manualImg;
+
+      // Si es una imagen local (base64), subir a Supabase Storage
+      if (manualImg.startsWith('data:')) {
+        const fileExt = manualImg.split(';')[0].split('/')[1];
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `shop/${fileName}`;
+
+        const base64Data = manualImg.split(',')[1];
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: manualImg.split(';')[0].split(':')[1] });
+
+        const { error } = await supabase.storage.from('images').upload(filePath, blob);
+        if (error) throw error;
+
+        const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
+        finalUrl = publicUrl;
+      }
+
       await addProduct({
         name: manualName,
         price: manualPrice,
         wholesalePrice: manualWholesale,
         category: manualCategory,
         gender: manualGender,
-        image: manualImg || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800',
+        image: finalUrl || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800',
         description: "Carga manual estratégica.",
         sizes: ['M', 'L']
       });
@@ -164,6 +189,7 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
       alert("¡Pieza añadida con éxito!");
     } catch (e) {
       console.error(e);
+      alert("Error al guardar el producto.");
     } finally {
       setIsSaving(false);
     }
@@ -263,14 +289,42 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[8px] font-black text-gray-500 uppercase ml-2 tracking-widest">URL Imagen</label>
+                  <div className="flex justify-between items-center ml-2">
+                    <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Foto del Producto</label>
+                    <button
+                      onClick={() => manualUploadRef.current?.click()}
+                      className="text-[8px] font-black text-cyan-400 uppercase tracking-widest hover:underline"
+                    >
+                      {manualImg.startsWith('data:') ? '✓ Foto Cargada' : '+ Subir Archivo'}
+                    </button>
+                    <input
+                      type="file"
+                      ref={manualUploadRef}
+                      className="hidden"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => setManualImg(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </div>
                   <input
                     type="text"
-                    value={manualImg}
+                    value={manualImg.startsWith('data:') ? 'Imagen local seleccionada...' : manualImg}
                     onChange={e => setManualImg(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm text-white outline-none"
+                    placeholder="Pega un link o usa el botón de arriba"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm text-white outline-none focus:border-cyan-400"
                   />
+                  {manualImg.startsWith('data:') && (
+                    <div className="mt-2 relative group w-20 h-20">
+                      <img src={manualImg} className="w-20 h-20 object-cover rounded-lg border border-white/10" />
+                      <button onClick={() => setManualImg('')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-[8px] flex items-center justify-center">✕</button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2">
@@ -320,8 +374,8 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
           {/* GESTIÓN DE INVENTARIO */}
           <section className="glass p-10 rounded-[3rem] border-white/5 space-y-8">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-black uppercase tracking-tighter italic">Stock <span className="text-pink-500">Actual</span></h2>
-              <span className="bg-pink-500/10 text-pink-500 px-4 py-1 rounded-full text-[9px] font-black uppercase">{useProducts().products.length} Items</span>
+              <h2 className="text-2xl font-black uppercase tracking-tighter italic">Inventario <span className="text-pink-500">Tienda</span></h2>
+              <span className="bg-pink-500/10 text-pink-500 px-4 py-1 rounded-full text-[9px] font-black uppercase">{useProducts().products.length} Productos</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {useProducts().products.map(p => (
@@ -346,10 +400,37 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             </div>
           </section>
 
+          {/* GESTIÓN DE GALERÍA */}
+          <section className="glass p-10 rounded-[3rem] border-white/5 space-y-8">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-black uppercase tracking-tighter italic">Contenido <span className="text-cyan-400">Galería</span></h2>
+              <span className="bg-cyan-400/10 text-cyan-400 px-4 py-1 rounded-full text-[9px] font-black uppercase">{useProducts().gallery.length} Archivos</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {useProducts().gallery.map(item => (
+                <div key={item.id} className="relative aspect-square rounded-2xl overflow-hidden group border border-white/5">
+                  {item.type === 'video' ? (
+                    <video src={item.url} className="w-full h-full object-cover" muted loop autoPlay />
+                  ) : (
+                    <img src={item.url} className="w-full h-full object-cover" />
+                  )}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
+                    <button
+                      onClick={() => useProducts().removeFromGallery(item.id)}
+                      className="p-2 bg-red-500 rounded-lg text-white"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1v3M4 7h16" strokeWidth="2" /></svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
           {/* CARGADOR MULTIMODAL */}
           <section className="glass p-10 rounded-[3rem] border-white/5 space-y-8 relative overflow-hidden">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-black uppercase tracking-tighter italic">Carga <span className="text-pink-500">Multimodal</span></h2>
+              <h2 className="text-2xl font-black uppercase tracking-tighter italic">Carga <span className="text-pink-500">Masiva</span></h2>
               {pendingFiles.length > 0 && (
                 <button onClick={saveAll} className="accent-gradient px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-white">
                   Sincronizar {pendingFiles.length} Piezas
@@ -397,95 +478,104 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[11px] text-white outline-none focus:border-pink-500"
                     />
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[8px] font-black text-gray-500 uppercase ml-2">Menudeo MXN</label>
-                        <input type="number" value={f.price} onChange={e => updatePending(f.id, { price: Number(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-white" />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[8px] font-black text-gray-500 uppercase ml-2">Mayoreo MXN <span className="text-pink-500">(+6 pzs)</span></label>
-                        <input type="number" value={f.wholesalePrice} onChange={e => updatePending(f.id, { wholesalePrice: Number(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-white" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[8px] font-black text-gray-500 uppercase ml-2 tracking-widest">Categoría</label>
-                      <div className="flex flex-wrap gap-2">
-                        {categories.map(c => (
-                          <button
-                            key={c}
-                            onClick={() => updatePending(f.id, { category: c })}
-                            className={`px-3 py-2 rounded-lg text-[8px] font-bold uppercase transition-all ${f.category === c ? 'bg-pink-500 text-white shadow-lg' : 'bg-white/5 text-gray-400 border border-white/5 hover:bg-white/10'}`}
-                          >
-                            {c}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[8px] font-black text-gray-500 uppercase ml-2 tracking-widest">Género</label>
-                      <div className="flex gap-2">
-                        {genders.map(g => (
-                          <button
-                            key={g}
-                            onClick={() => updatePending(f.id, { gender: g })}
-                            className={`flex-1 py-2 rounded-lg text-[9px] font-bold uppercase transition-all ${f.gender === g ? 'bg-cyan-500 text-black shadow-lg' : 'bg-white/5 text-gray-500 border border-white/5 hover:bg-white/10'}`}
-                          >
-                            {g}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {f.target === 'shop' && !['Accesorios', 'Cuadros', 'Pinturas', 'Videos'].includes(f.category) && (
-                      <div className="space-y-2">
-                        <label className="text-[8px] font-black text-gray-500 uppercase ml-2 tracking-widest">Tallas</label>
-                        <div className="flex justify-between gap-1">
-                          {sizeOptions.map(s => (
-                            <button
-                              key={s}
-                              onClick={() => toggleSize(f.id, s)}
-                              className={`flex-1 py-2 rounded-lg text-[9px] font-black border transition-all ${f.sizes.includes(s) ? 'bg-white text-black border-transparent shadow-lg' : 'bg-white/5 border-white/5 text-gray-600'}`}
-                            >
-                              {s}
-                            </button>
-                          ))}
+                    {f.target === 'shop' ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-black text-gray-500 uppercase ml-2">Menudeo MXN</label>
+                            <input type="number" value={f.price} onChange={e => updatePending(f.id, { price: Number(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-white" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-black text-gray-500 uppercase ml-2">Mayoreo MXN <span className="text-pink-500">(+6 pzs)</span></label>
+                            <input type="number" value={f.wholesalePrice} onChange={e => updatePending(f.id, { wholesalePrice: Number(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-white" />
+                          </div>
                         </div>
+
+                        <div className="space-y-2">
+                          <label className="text-[8px] font-black text-gray-500 uppercase ml-2 tracking-widest">Categoría</label>
+                          <div className="flex flex-wrap gap-2">
+                            {categories.map(c => (
+                              <button
+                                key={c}
+                                onClick={() => updatePending(f.id, { category: c })}
+                                className={`px-3 py-2 rounded-lg text-[8px] font-bold uppercase transition-all ${f.category === c ? 'bg-pink-500 text-white shadow-lg' : 'bg-white/5 text-gray-400 border border-white/5 hover:bg-white/10'}`}
+                              >
+                                {c}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-[8px] font-black text-gray-500 uppercase ml-2 tracking-widest">Género</label>
+                          <div className="flex gap-2">
+                            {genders.map(g => (
+                              <button
+                                key={g}
+                                onClick={() => updatePending(f.id, { gender: g })}
+                                className={`flex-1 py-2 rounded-lg text-[9px] font-bold uppercase transition-all ${f.gender === g ? 'bg-cyan-500 text-black shadow-lg' : 'bg-white/5 text-gray-500 border border-white/5 hover:bg-white/10'}`}
+                              >
+                                {g}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {!['Accesorios', 'Cuadros', 'Pinturas', 'Videos'].includes(f.category) && (
+                          <div className="space-y-2">
+                            <label className="text-[8px] font-black text-gray-500 uppercase ml-2 tracking-widest">Tallas</label>
+                            <div className="flex justify-between gap-1">
+                              {sizeOptions.map(s => (
+                                <button
+                                  key={s}
+                                  onClick={() => toggleSize(f.id, s)}
+                                  className={`flex-1 py-2 rounded-lg text-[9px] font-black border transition-all ${f.sizes.includes(s) ? 'bg-white text-black border-transparent shadow-lg' : 'bg-white/5 border-white/5 text-gray-600'}`}
+                                >
+                                  {s}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="pt-4 border-t border-white/5 space-y-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                const resp = await geminiService.chat([], `Genera una descripción corta y elegante para una ${f.category} llamada ${f.name} de género ${f.gender}. Sé muy persuasivo.`, "");
+                                updatePending(f.id, { description: resp.text || f.description });
+                              }}
+                              className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl text-[8px] font-black uppercase text-pink-500 hover:bg-pink-500/10 transition-all flex items-center justify-center gap-2"
+                            >
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M11.5 7.5L14 10L11.5 12.5L9 10L11.5 7.5ZM19 12L21 14L19 16L17 14L19 12ZM7 14L9 16L7 18L5 16L7 14ZM11.5 3L13.1 6.4L16.5 8L13.1 9.6L11.5 13L9.9 9.6L6.5 8L9.9 6.4L11.5 3Z" /></svg>
+                              Reseña AI
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const resp = await geminiService.chat([], `Genera una publicación para Facebook Marketplace de una ${f.category} llamada ${f.name}. PRECIO: ${f.price}. No menciones marcas si hay logos, enfócate en calidad premium y exclusividad. Usa emojis.`, "");
+                                alert("Copiado al portapapeles: \n\n" + resp.text);
+                                if (resp.text) navigator.clipboard.writeText(resp.text);
+                              }}
+                              className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl text-[8px] font-black uppercase text-cyan-400 hover:bg-cyan-400/10 transition-all flex items-center justify-center gap-2"
+                            >
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M17 2H7C5.89543 2 5 2.89543 5 4V20C5 21.1046 5.89543 22 7 22H17C18.1046 22 19 21.1046 19 20V4C19 2.89543 18.1046 2 -17 2ZM17 20H7V4H17V20ZM12 18C13.1046 18 14 17.1046 14 16C14 14.8954 13.1046 14 12 14C10.8954 14 10 14.8954 10 16C10 17.1046 10.8954 18 12 18Z" /></svg>
+                              Post Marketplace
+                            </button>
+                          </div>
+                          <textarea
+                            value={f.description}
+                            onChange={e => updatePending(f.id, { description: e.target.value })}
+                            rows={2}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-gray-400 outline-none focus:border-pink-500 resize-none"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="bg-cyan-400/5 border border-cyan-400/10 p-4 rounded-2xl">
+                        <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest text-center">Modo Galería Activo</p>
+                        <p className="text-[8px] text-gray-500 uppercase font-bold text-center mt-2">Se guardará solo como contenido visual (Lookbook)</p>
                       </div>
                     )}
-
-                    <div className="pt-4 border-t border-white/5 space-y-3">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={async () => {
-                            const resp = await geminiService.chat([], `Genera una descripción corta y elegante para una ${f.category} llamada ${f.name} de género ${f.gender}. Sé muy persuasivo.`, "");
-                            updatePending(f.id, { description: resp.text || f.description });
-                          }}
-                          className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl text-[8px] font-black uppercase text-pink-500 hover:bg-pink-500/10 transition-all flex items-center justify-center gap-2"
-                        >
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M11.5 7.5L14 10L11.5 12.5L9 10L11.5 7.5ZM19 12L21 14L19 16L17 14L19 12ZM7 14L9 16L7 18L5 16L7 14ZM11.5 3L13.1 6.4L16.5 8L13.1 9.6L11.5 13L9.9 9.6L6.5 8L9.9 6.4L11.5 3Z" /></svg>
-                          Reseña AI
-                        </button>
-                        <button
-                          onClick={async () => {
-                            const resp = await geminiService.chat([], `Genera una publicación para Facebook Marketplace de una ${f.category} llamada ${f.name}. PRECIO: ${f.price}. No menciones marcas si hay logos, enfócate en calidad premium y exclusividad. Usa emojis.`, "");
-                            alert("Copiado al portapapeles: \n\n" + resp.text);
-                            if (resp.text) navigator.clipboard.writeText(resp.text);
-                          }}
-                          className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl text-[8px] font-black uppercase text-cyan-400 hover:bg-cyan-400/10 transition-all flex items-center justify-center gap-2"
-                        >
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M17 2H7C5.89543 2 5 2.89543 5 4V20C5 21.1046 5.89543 22 7 22H17C18.1046 22 19 21.1046 19 20V4C19 2.89543 18.1046 2 -17 2ZM17 20H7V4H17V20ZM12 18C13.1046 18 14 17.1046 14 16C14 14.8954 13.1046 14 12 14C10.8954 14 10 14.8954 10 16C10 17.1046 10.8954 18 12 18Z" /></svg>
-                          Post Marketplace
-                        </button>
-                      </div>
-                      <textarea
-                        value={f.description}
-                        onChange={e => updatePending(f.id, { description: e.target.value })}
-                        rows={2}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-gray-400 outline-none focus:border-pink-500 resize-none"
-                      />
-                    </div>
                   </div>
                 </div>
               ))}
