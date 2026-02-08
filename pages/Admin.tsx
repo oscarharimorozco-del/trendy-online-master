@@ -60,7 +60,12 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${f.target}/${fileName}`;
         const base64Data = f.src.split(',')[1];
-        const blob = new Blob([atob(base64Data).split("").map(c => c.charCodeAt(0))], { type: f.src.split(';')[0].split(':')[1] });
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: f.src.split(';')[0].split(':')[1] });
         const { error } = await supabase.storage.from('imagenes').upload(filePath, blob);
         if (error) throw error;
         finalUrl = supabase.storage.from('imagenes').getPublicUrl(filePath).data.publicUrl;

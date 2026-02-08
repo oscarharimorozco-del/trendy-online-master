@@ -102,6 +102,11 @@ export const geminiService = {
     }).catch(() => null);
   },
 
+  generateImage: async (prompt: string, aspectRatio: AspectRatio, imageSize: ImageSize) => {
+    console.log("Generando:", prompt, aspectRatio, imageSize);
+    throw new Error("El motor 'Imagen' requiere una llave de API con facturación activa en Google Cloud.");
+  },
+
   editImage: async (sourceImageBase64: string, prompt: string) => {
     return geminiService.request(async (apiKey) => {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
