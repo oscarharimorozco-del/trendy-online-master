@@ -108,7 +108,6 @@ export const geminiService = {
         contents,
         config: {
           systemInstruction: mode === 'admin' ? adminInstruction : storeInstruction,
-          tools: [{ googleSearch: {} }]
         },
       });
       return { text: response.text };
@@ -171,7 +170,7 @@ export const geminiService = {
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: 'gemini-1.5-flash',
       contents: {
         parts: [
           {
