@@ -235,7 +235,7 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                           <p className="text-[10px] text-cyan-400 font-black">M: ${p.wholesalePrice}</p>
                         </div>
                       </div>
-                      <button onClick={() => { if (confirm("¿Borrar permanentemente?")) removeProduct(p.id); }} className="p-3 text-red-500/40 hover:text-red-500 transition-colors">✕</button>
+                      <button onClick={async () => { if (confirm("¿Borrar permanentemente?")) { try { await removeProduct(p.id); } catch (e: any) { alert(e.message); } } }} className="p-3 text-red-500/40 hover:text-red-500 transition-colors">✕</button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
@@ -249,7 +249,7 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                             className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black text-yellow-500 outline-none focus:border-yellow-500"
                           />
                           <button
-                            onClick={() => updateProduct(p.id, { isPromotion: !p.isPromotion })}
+                            onClick={async () => { try { await updateProduct(p.id, { isPromotion: !p.isPromotion }); } catch (e: any) { alert(e.message); } }}
                             className={`px-4 rounded-xl text-[8px] font-black uppercase border transition-all ${p.isPromotion ? 'bg-yellow-500 border-transparent text-black shadow-lg' : 'bg-white/5 border-white/10 text-gray-500'}`}
                           >
                             {p.isPromotion ? '⚡ ACTIVO' : 'ACTIVAR'}
@@ -257,7 +257,7 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         </div>
                       </div>
                       <button
-                        onClick={() => updateProduct(p.id, { isSoldOut: !p.isSoldOut })}
+                        onClick={async () => { try { await updateProduct(p.id, { isSoldOut: !p.isSoldOut }); } catch (e: any) { alert(e.message); } }}
                         className={`py-2 rounded-xl text-[8px] font-black uppercase border transition-all ${p.isSoldOut ? 'bg-red-500 border-transparent text-white shadow-lg' : 'bg-white/5 border-white/10 text-gray-500'}`}
                       >
                         {p.isSoldOut ? '🚫 Agotado' : 'Disponible'}
@@ -274,8 +274,8 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                   <div key={item.id} className={`aspect-square rounded-xl overflow-hidden relative group border transition-all ${item.isFeatured ? 'border-purple-500 ring-2 ring-purple-500/30' : 'border-white/5'}`}>
                     <img src={item.url} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-2 p-1">
-                      <button onClick={() => removeFromGallery(item.id)} className="bg-red-600 text-[6px] font-black px-2 py-1 rounded w-full">BORRAR</button>
-                      <button onClick={() => updateGalleryItem(item.id, { isFeatured: !item.isFeatured })} className="bg-purple-600 text-[6px] font-black px-2 py-1 rounded w-full">{item.isFeatured ? 'NO DESTACAR' : 'DESTACAR'}</button>
+                      <button onClick={async () => { try { await removeFromGallery(item.id); } catch (e: any) { alert(e.message); } }} className="bg-red-600 text-[6px] font-black px-2 py-1 rounded w-full">BORRAR</button>
+                      <button onClick={async () => { try { await updateGalleryItem(item.id, { isFeatured: !item.isFeatured }); } catch (e: any) { alert(e.message); } }} className="bg-purple-600 text-[6px] font-black px-2 py-1 rounded w-full">{item.isFeatured ? 'NO DESTACAR' : 'DESTACAR'}</button>
                     </div>
                     {item.isFeatured && <span className="absolute top-1 right-1 text-[8px] drop-shadow-lg">⭐</span>}
                   </div>

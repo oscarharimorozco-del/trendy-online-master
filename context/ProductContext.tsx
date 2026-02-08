@@ -27,6 +27,22 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
   });
   const [isLoading, setIsLoading] = useState(true);
 
+  // Helper to map snake_case to camelCase
+  const mapProductFromDB = (p: any): Product => ({
+    ...p,
+    wholesalePrice: p.wholesale_price || p.wholesalePrice,
+    promoPrice: p.promo_price || p.promoPrice,
+    isPromotion: p.is_promotion || p.isPromotion,
+    isSoldOut: p.is_sold_out || p.isSoldOut,
+    // Ensure arrays are handled if stored as JSON/text
+    sizes: typeof p.sizes === 'string' ? JSON.parse(p.sizes) : (p.sizes || [])
+  });
+
+  const mapGalleryFromDB = (g: any): GalleryItem => ({
+    ...g,
+    isFeatured: g.is_featured || g.isFeatured
+  });
+
   // Fetch initial data
   const fetchData = async () => {
     setIsLoading(true);
@@ -37,7 +53,7 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .order('created_at', { ascending: false });
 
       if (productsError) throw productsError;
-      setProducts(productsData || []);
+      setProducts((productsData || []).map(mapProductFromDB));
 
       const { data: galleryData, error: galleryError } = await supabase
         .from('gallery')
@@ -45,7 +61,7 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .order('created_at', { ascending: false });
 
       if (galleryError) throw galleryError;
-      setGallery(galleryData || []);
+      setGallery((galleryData || []).map(mapGalleryFromDB));
 
       // Fetch Global Settings
       const { data: settingsData, error: settingsError } = await supabase
@@ -71,27 +87,47 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addProduct = async (product: Omit<Product, 'id'>) => {
     try {
+      const dbProduct = {
+        ...product,
+        wholesale_price: product.wholesalePrice,
+        promo_price: product.promoPrice,
+        is_promotion: product.isPromotion,
+        is_sold_out: product.isSoldOut
+      };
+
       const { data, error } = await supabase
         .from('products')
-        .insert([product])
+        .insert([dbProduct])
         .select();
 
       if (error) throw error;
-      if (data) setProducts([data[0], ...products]);
+      if (data) setProducts([mapProductFromDB(data[0]), ...products]);
     } catch (error: any) {
       console.error('Error adding product:', error);
-      alert(`Error en la nube: ${error.message || 'Error desconocido'}`);
+      throw error;
     }
   };
 
   const updateProduct = async (id: string, updates: Partial<Product>) => {
     try {
-      const { error } = await supabase.from('products').update(updates).eq('id', id);
+      const dbUpdates: any = { ...updates };
+      if (updates.wholesalePrice !== undefined) dbUpdates.wholesale_price = updates.wholesalePrice;
+      if (updates.promoPrice !== undefined) dbUpdates.promo_price = updates.promoPrice;
+      if (updates.isPromotion !== undefined) dbUpdates.is_promotion = updates.isPromotion;
+      if (updates.isSoldOut !== undefined) dbUpdates.is_sold_out = updates.isSoldOut;
+
+      // Cleanup camelCase keys if they shouldn't be sent to DB (Supabase ignores extras usually, but safer to be clean)
+      delete dbUpdates.wholesalePrice;
+      delete dbUpdates.promoPrice;
+      delete dbUpdates.isPromotion;
+      delete dbUpdates.isSoldOut;
+
+      const { error } = await supabase.from('products').update(dbUpdates).eq('id', id);
       if (error) throw error;
       setProducts(products.map(p => p.id === id ? { ...p, ...updates } : p));
     } catch (error: any) {
       console.error('Error updating product:', error);
-      alert(`Error al actualizar: ${error.message}`);
+      throw error;
     }
   };
 
@@ -111,15 +147,21 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addToGallery = async (item: Omit<GalleryItem, 'id'>) => {
     try {
+      const dbItem = {
+        ...item,
+        is_featured: item.isFeatured
+      };
+
       const { data, error } = await supabase
         .from('gallery')
-        .insert([item])
+        .insert([dbItem])
         .select();
 
       if (error) throw error;
-      if (data) setGallery([data[0], ...gallery]);
+      if (data) setGallery([mapGalleryFromDB(data[0]), ...gallery]);
     } catch (error) {
       console.error('Error adding to gallery:', error);
+      throw error;
     }
   };
 
@@ -134,17 +176,22 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setGallery(gallery.filter(item => item.id !== id));
     } catch (error) {
       console.error('Error removing from gallery:', error);
+      throw error;
     }
   };
 
   const updateGalleryItem = async (id: string, updates: Partial<GalleryItem>) => {
     try {
-      const { error } = await supabase.from('gallery').update(updates).eq('id', id);
+      const dbUpdates: any = { ...updates };
+      if (updates.isFeatured !== undefined) dbUpdates.is_featured = updates.isFeatured;
+      delete dbUpdates.isFeatured;
+
+      const { error } = await supabase.from('gallery').update(dbUpdates).eq('id', id);
       if (error) throw error;
       setGallery(gallery.map(item => item.id === id ? { ...item, ...updates } : item));
     } catch (error: any) {
       console.error('Error updating gallery item:', error);
-      alert(`Error al actualizar galería: ${error.message}`);
+      throw error;
     }
   };
 
