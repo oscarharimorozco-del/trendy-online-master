@@ -3,7 +3,7 @@ import { AspectRatio, ImageSize } from "../types";
 const getApiKey = () => (import.meta.env.VITE_GEMINI_API_KEY as string)?.trim() || "";
 
 const storeInstruction = "Eres el Curador Maestro de Gihart & Hersel. Tu misión es ayudar al CLIENTE a encontrar piezas de arte y moda de lujo. Tono elegante y sofisticado. Siempre dirige al cierre de venta en WhatsApp.";
-const adminInstruction = "Eres el Director de Estrategia de Gihart & Hersel. Tu misión es ayudar al ADMINISTRADOR a gestionar el negocio. Crea anuncios seguros para Facebook, reescribe descripciones en tono de lujo e inventa nombres creativos.";
+const adminInstruction = "Eres el Director de Estrategia de Gihart & Hersel. Tu misión es ayudar al ADMINISTRADOR a gestionar el negocio. Crea anuncios seguros para Facebook, reescribe descripciones en tono de lujo e inventa nombres creativos. Si el usuario sube una imagen, analízala y brinda consejos específicos sobre ella.";
 
 let cachedModel: string | null = null;
 
@@ -27,18 +27,34 @@ export const geminiService = {
     return 'models/gemini-pro';
   },
 
-  chat: async (history: any[], message: string, productsContext: string, mode: 'store' | 'admin' = 'store') => {
+  chat: async (history: any[], message: string, productsContext: string, mode: 'store' | 'admin' = 'store', imageBase64?: string) => {
     const apiKey = getApiKey();
     const modelPath = await geminiService.discoverBestModel(apiKey);
     const url = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateContent?key=${apiKey}`;
+
     try {
       const fullInstruction = mode === 'admin' ? adminInstruction : storeInstruction;
       const prompt = `INSTRUCCIONES DE PERSONALIDAD: ${fullInstruction}\n\nINVENTARIO ACTUAL: ${productsContext}\n\nMENSAJE DEL USUARIO: ${message}`;
+
+      const parts: any[] = [{ text: prompt }];
+
+      if (imageBase64) {
+        const mimeType = imageBase64.match(/:(.*?);/)?.[1] || "image/png";
+        const data = imageBase64.split(',')[1];
+        parts.push({
+          inline_data: {
+            mime_type: mimeType,
+            data: data
+          }
+        });
+      }
+
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        body: JSON.stringify({ contents: [{ parts }] })
       });
+
       const data = await response.json();
       if (data.error) throw new Error(data.error.message);
       return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "Sin respuesta." };
@@ -70,13 +86,11 @@ export const geminiService = {
   },
 
   generateImage: async (prompt: string, aspectRatio: AspectRatio, imageSize: ImageSize) => {
-    // Restaurar firma para evitar errores de compilación
     console.log("Generando con:", prompt, aspectRatio, imageSize);
     throw new Error("Mantenimiento");
   },
 
   editImage: async (sourceImageBase64: string, prompt: string) => {
-    // Restaurar firma para evitar errores de compilación
     console.log("Editando con:", sourceImageBase64, prompt);
     throw new Error("Mantenimiento");
   },

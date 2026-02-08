@@ -1,14 +1,15 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { geminiService } from '../services/geminiService';
 import { useProducts } from '../context/ProductContext';
 
 export const AdminAgent: React.FC = () => {
-  const [messages, setMessages] = useState<{ role: string, text: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: string, text: string, image?: string }[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const { products } = useProducts();
 
@@ -31,17 +32,29 @@ export const AdminAgent: React.FC = () => {
     } catch (e) { console.error("TTS Error:", e); }
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setSelectedImage(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSend = async (customMsg?: string) => {
     const userMsg = customMsg || input;
-    if (!userMsg.trim() || isLoading) return;
+    if (!userMsg.trim() && !selectedImage) return;
+    if (isLoading) return;
 
+    const currentImage = selectedImage;
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setSelectedImage(null);
+    setMessages(prev => [...prev, { role: 'user', text: userMsg || "(Imagen enviada)", image: currentImage || undefined }]);
     setIsLoading(true);
 
     try {
       const productsContext = products.map(p => `${p.name} ($${p.price})`).join(', ');
-      const response = await geminiService.chat(messages, userMsg, productsContext, 'admin');
+      const response = await geminiService.chat(messages, userMsg || "Analiza esta imagen", productsContext, 'admin', currentImage || undefined);
       const reply = response.text ?? 'Sin respuesta.';
 
       setMessages(prev => [...prev, { role: 'model', text: reply }]);
@@ -90,18 +103,17 @@ export const AdminAgent: React.FC = () => {
               >
                 📱 Post Marketplace Anti-Bloqueo
               </button>
-              <button
-                onClick={() => handleSend("¿Qué piezas de mi inventario actual me sugieres promocionar hoy?")}
-                className="p-4 bg-white/5 rounded-2xl border border-white/5 text-[9px] text-gray-400 font-bold uppercase transition-all hover:bg-white/10 hover:text-white"
-              >
-                📦 Analizar Estrategia de Venta
-              </button>
             </div>
           </div>
         )}
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`p-4 rounded-2xl text-[10px] leading-relaxed shadow-xl max-w-[90%] ${m.role === 'user' ? 'bg-cyan-600 text-white' : 'bg-white/10 text-gray-300 border border-white/5'}`}>
+            <div className={`p-4 rounded-2xl text-[10px] leading-relaxed shadow-xl max-w-[90%] ${m.role === 'user' ? 'bg-cyan-600/80 text-white backdrop-blur-md' : 'bg-white/10 text-gray-300 border border-white/5 backdrop-blur-md'}`}>
+              {m.image && (
+                <div className="mb-3 rounded-xl overflow-hidden border border-white/10">
+                  <img src={m.image} alt="User Upload" className="max-w-full h-auto" />
+                </div>
+              )}
               {m.text.split('\n').map((line, idx) => <p key={idx}>{line}</p>)}
             </div>
           </div>
@@ -117,16 +129,44 @@ export const AdminAgent: React.FC = () => {
         )}
       </div>
 
-      <div className="p-5 bg-black/40 border-t border-white/5 flex gap-3">
+      {selectedImage && (
+        <div className="px-5 py-2 bg-cyan-500/10 border-t border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg overflow-hidden border border-cyan-500/30">
+              <img src={selectedImage} alt="Preview" className="w-full h-full object-cover" />
+            </div>
+            <span className="text-[8px] font-black uppercase text-cyan-400 tracking-widest">Imagen Lista</span>
+          </div>
+          <button onClick={() => setSelectedImage(null)} className="text-gray-500 hover:text-white transition-colors">✕</button>
+        </div>
+      )}
+
+      <div className="p-5 bg-black/40 border-t border-white/5 flex gap-3 relative">
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleImageSelect}
+          accept="image/*"
+          className="hidden"
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className={`p-3 rounded-2xl transition-all border ${selectedImage ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'bg-white/5 border-white/10 text-gray-500 hover:text-white'}`}
+          title="Subir imagen"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" strokeWidth="2" /></svg>
+        </button>
+
         <input
           type="text"
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSend()}
-          placeholder="Escribe comando estratégico..."
+          placeholder={selectedImage ? "Describe qué hacer con la foto..." : "Escribe comando estratégico..."}
           className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-[10px] outline-none focus:border-cyan-500 text-white"
         />
-        <button onClick={() => handleSend()} className="accent-gradient p-3 rounded-2xl hover:scale-105 transition-all shadow-lg">
+
+        <button onClick={() => handleSend()} disabled={isLoading} className="accent-gradient p-3 rounded-2xl hover:scale-105 transition-all shadow-lg active:scale-95 disabled:opacity-50">
           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" strokeWidth="3" /></svg>
         </button>
       </div>
