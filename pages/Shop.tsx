@@ -7,20 +7,26 @@ import { Product } from '../types';
 const Shop: React.FC = () => {
   const { products } = useProducts();
   const { addToCart } = useCart();
+  const [searchParams] = React.useMemo(() => [new URLSearchParams(window.location.hash.split('?')[1] || '')], [window.location.hash]);
+  const initialGender = searchParams.get('gender') || 'Todo';
+
   const [activeCategory, setActiveCategory] = useState<string>('Todo');
+  const [activeGender, setActiveGender] = useState<string>(initialGender);
   const [activeSize, setActiveSize] = useState<string | null>(null);
   const [selectedSizes, setSelectedSizes] = useState<Record<string, string>>({});
 
   const categories = ['Todo', 'Polos', 'Playeras', 'Accesorios', 'Cuadros', 'Pinturas', 'Videos'];
+  const genders = ['Todo', 'Hombre', 'Mujer', 'Unisex'];
   const sizes = ['S', 'M', 'L', 'XL', '2XL'];
 
   const filtered = useMemo(() => {
     return products.filter(p => {
       const matchCat = activeCategory === 'Todo' ? true : p.category === activeCategory;
+      const matchGender = activeGender === 'Todo' ? true : p.gender === activeGender;
       if (['Accesorios', 'Cuadros', 'Pinturas', 'Videos'].includes(activeCategory)) return matchCat;
-      return matchCat && (!activeSize || p.sizes?.includes(activeSize));
+      return matchCat && matchGender && (!activeSize || p.sizes?.includes(activeSize));
     });
-  }, [products, activeCategory, activeSize]);
+  }, [products, activeCategory, activeGender, activeSize]);
 
   const handleAddToCart = (product: Product) => {
     const size = selectedSizes[product.id] || (product.sizes?.[0]) || 'N/A';
@@ -46,20 +52,33 @@ const Shop: React.FC = () => {
           <h1 className="text-8xl font-black tracking-tighter uppercase leading-[0.8] mb-4">Gihart <span className="text-gradient">Catalog</span></h1>
           <p className="text-gray-500 text-lg uppercase font-black tracking-widest text-[10px]">Moda masculina premium. Importación directa.</p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => {
-                setActiveCategory(cat);
-                if (['Accesorios', 'Cuadros', 'Pinturas', 'Videos'].includes(cat) || cat === 'Todo') setActiveSize(null);
-                else setActiveSize('M');
-              }}
-              className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeCategory === cat ? 'accent-gradient shadow-xl' : 'bg-white/5 text-gray-500 border border-white/5 hover:bg-white/10'}`}
-            >
-              {cat}
-            </button>
-          ))}
+        <div className="flex flex-col gap-6 w-full lg:w-auto">
+          <div className="flex flex-wrap gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/5 self-end">
+            {genders.map(g => (
+              <button
+                key={g}
+                onClick={() => setActiveGender(g)}
+                className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${activeGender === g ? 'bg-white text-black shadow-xl scale-105' : 'text-gray-500 hover:text-white'}`}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-3 justify-end">
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => {
+                  setActiveCategory(cat);
+                  if (['Accesorios', 'Cuadros', 'Pinturas', 'Videos'].includes(cat) || cat === 'Todo') setActiveSize(null);
+                  else if (!activeSize) setActiveSize('M');
+                }}
+                className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeCategory === cat ? 'accent-gradient shadow-xl' : 'bg-white/5 text-gray-500 border border-white/5 hover:bg-white/10'}`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -100,12 +119,27 @@ const Shop: React.FC = () => {
                 </div>
 
                 <div className="pt-8 px-4 flex flex-col flex-1 space-y-6">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-black text-2xl uppercase tracking-tighter leading-none mb-2">{p.name}</h3>
-                      <p className="text-gray-600 text-[10px] font-bold uppercase tracking-widest">{p.category} | {p.gender}</p>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-black text-2xl uppercase tracking-tighter leading-none mb-2">{p.name}</h3>
+                        <p className="text-gray-600 text-[10px] font-bold uppercase tracking-widest">{p.category} | {p.gender}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-3xl font-black text-white italic tracking-tighter leading-none">${p.price}</p>
+                        <p className="text-[8px] font-black text-gray-500 uppercase tracking-tighter mt-1">Precio Unitario</p>
+                      </div>
                     </div>
-                    <p className="text-3xl font-black text-white italic tracking-tighter">${p.price}</p>
+
+                    {p.wholesalePrice && (
+                      <div className="flex justify-between items-center py-3 px-4 bg-cyan-400/5 rounded-2xl border border-cyan-400/20 group-hover:bg-cyan-400/10 transition-colors">
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black uppercase text-cyan-400 tracking-widest">Mayoreo</span>
+                          <span className="text-[7px] font-bold text-cyan-400/60 uppercase">Después de 6 pzas</span>
+                        </div>
+                        <span className="text-2xl font-black text-cyan-400 italic tracking-tighter">${p.wholesalePrice}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Selector de Tallas */}

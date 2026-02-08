@@ -53,12 +53,14 @@ const Home: React.FC = () => {
           <p className="text-2xl text-gray-300 max-w-xl font-light leading-relaxed">
             La curaduría perfecta para el hombre que no busca destacar, sino ser recordado.
           </p>
-          <div className="flex gap-8">
-            <Link to="/shop" className="accent-gradient text-white px-14 py-6 rounded-full font-black text-sm uppercase tracking-widest hover:scale-105 transition-all shadow-2xl shadow-pink-500/30 ring-2 ring-white/10">
-              Ver Colección
+          <div className="flex flex-wrap gap-6">
+            <Link to="/shop?gender=Hombre" className="accent-gradient text-white px-10 md:px-14 py-6 rounded-full font-black text-sm uppercase tracking-widest hover:scale-105 transition-all shadow-2xl shadow-pink-500/30 ring-2 ring-white/10 flex items-center gap-4 group/btn">
+              <span>Hombre</span>
+              <svg className="w-5 h-5 group-hover/btn:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 8l4 4m0 0l-4 4m4-4H3" strokeWidth="3" strokeLinecap="round" /></svg>
             </Link>
-            <Link to="/gallery" className="bg-white/5 backdrop-blur-xl border border-white/10 text-white px-14 py-6 rounded-full font-black text-sm uppercase tracking-widest hover:bg-white/10 transition-all">
-              Ver Lookbook
+            <Link to="/shop?gender=Mujer" className="bg-white/5 backdrop-blur-xl border border-white/10 text-white px-10 md:px-14 py-6 rounded-full font-black text-sm uppercase tracking-widest hover:bg-white/10 hover:scale-105 transition-all flex items-center gap-4 group/btn">
+              <span>Mujer</span>
+              <svg className="w-5 h-5 group-hover/btn:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 8l4 4m0 0l-4 4m4-4H3" strokeWidth="3" strokeLinecap="round" /></svg>
             </Link>
           </div>
         </div>

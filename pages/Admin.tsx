@@ -107,26 +107,116 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
           {/* LISTA DE PENDIENTES (MODO MANUAL) */}
           <div className="space-y-10">
+            {pendingFiles.length > 1 && (
+              <div className="bg-white/5 border border-white/10 p-6 rounded-[2rem] flex flex-wrap items-center justify-between gap-6 animate-slide-up">
+                <div className="flex items-center gap-4">
+                  <div className="w-2 h-10 bg-pink-500 rounded-full"></div>
+                  <h3 className="text-xs font-black uppercase tracking-widest">Edición en Lote ({pendingFiles.length})</h3>
+                </div>
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex gap-2 bg-black/40 p-1 rounded-xl border border-white/5">
+                    {(['Hombre', 'Mujer'] as GenderType[]).map(g => (
+                      <button
+                        key={g}
+                        onClick={() => setPendingFiles(prev => prev.map(f => ({ ...f, gender: g })))}
+                        className="px-4 py-2 rounded-lg text-[9px] font-black uppercase hover:bg-white/10 transition-all text-gray-400 hover:text-white"
+                      >
+                        Todo {g}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (confirm("¿Publicar todos los pendientes?")) {
+                        pendingFiles.forEach(f => saveItem(f.id));
+                      }
+                    }}
+                    className="bg-white text-black px-8 py-2 rounded-xl text-[9px] font-black uppercase hover:bg-pink-500 hover:text-white transition-all shadow-lg"
+                  >
+                    Publicar Todo
+                  </button>
+                </div>
+              </div>
+            )}
+
             {pendingFiles.map(f => (
-              <div key={f.id} className="bg-white/[0.02] border border-white/10 p-10 rounded-[4rem] animate-slide-up relative">
+              <div key={f.id} className="bg-white/[0.02] border border-white/10 p-10 rounded-[4rem] animate-slide-up relative group/card">
                 <button onClick={() => setPendingFiles(prev => prev.filter(x => x.id !== f.id))} className="absolute top-8 right-10 text-gray-600 hover:text-white text-3xl">✕</button>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                   <div className="space-y-6">
-                    <div className="aspect-[4/5] rounded-[2rem] overflow-hidden bg-black border border-white/5 shadow-2xl">
+                    <div className="aspect-[4/5] rounded-[2rem] overflow-hidden bg-black border border-white/5 shadow-2xl relative">
                       {f.src.startsWith('data:video') ? <video src={f.src} className="w-full h-full object-cover" autoPlay muted loop /> : <img src={f.src} className="w-full h-full object-cover" />}
+                      <div className="absolute top-4 left-4 flex gap-2">
+                        <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase shadow-xl ${f.target === 'shop' ? 'bg-pink-500' : 'bg-cyan-500'}`}>{f.target === 'shop' ? 'Tienda' : 'Galería'}</span>
+                        <span className="bg-black/80 backdrop-blur-md px-3 py-1 rounded-full text-[8px] font-black uppercase border border-white/10">{f.gender}</span>
+                      </div>
                     </div>
-                    <input type="text" value={f.name} onChange={e => updatePending(f.id, { name: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-center font-bold" />
+                    <input type="text" value={f.name} onChange={e => updatePending(f.id, { name: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-center font-bold outline-none focus:border-pink-500/50" placeholder="Nombre de la pieza" />
                   </div>
                   <div className="space-y-8">
                     <div className="grid grid-cols-2 gap-4">
-                      <button onClick={() => updatePending(f.id, { target: 'shop' })} className={`py-5 rounded-2xl text-[10px] font-black uppercase border ${f.target === 'shop' ? 'bg-pink-500 border-transparent' : 'bg-white/5 text-gray-500 border-white/5'}`}>🛍️ Tienda</button>
-                      <button onClick={() => updatePending(f.id, { target: 'gallery' })} className={`py-5 rounded-2xl text-[10px] font-black uppercase border ${f.target === 'gallery' ? 'bg-cyan-500 border-transparent' : 'bg-white/5 text-gray-500 border-white/5'}`}>🖼️ Galería</button>
+                      <button onClick={() => updatePending(f.id, { target: 'shop' })} className={`py-5 rounded-2xl text-[10px] font-black uppercase border transition-all ${f.target === 'shop' ? 'bg-pink-500 border-transparent shadow-lg shadow-pink-500/20' : 'bg-white/5 text-gray-500 border-white/5 hover:bg-white/10'}`}>🛍️ Tienda</button>
+                      <button onClick={() => updatePending(f.id, { target: 'gallery' })} className={`py-5 rounded-2xl text-[10px] font-black uppercase border transition-all ${f.target === 'gallery' ? 'bg-cyan-500 border-transparent shadow-lg shadow-cyan-500/20' : 'bg-white/5 text-gray-500 border-white/5 hover:bg-white/10'}`}>🖼️ Galería</button>
                     </div>
+
                     <div className="grid grid-cols-2 gap-4">
-                      <input type="number" value={f.price} onChange={e => updatePending(f.id, { price: Number(e.target.value) })} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xl font-black text-pink-500 text-center" />
-                      <input type="number" value={f.wholesalePrice} onChange={e => updatePending(f.id, { wholesalePrice: Number(e.target.value) })} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xl font-black text-cyan-400 text-center" />
+                      <div className="space-y-2">
+                        <p className="text-[7px] font-black uppercase text-gray-600 tracking-tighter ml-2">Precio Público</p>
+                        <input type="number" value={f.price} onChange={e => updatePending(f.id, { price: Number(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xl font-black text-pink-500 text-center outline-none focus:border-pink-500/50" />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-[7px] font-black uppercase text-gray-600 tracking-tighter ml-2">Mayoreo (6+ pzas)</p>
+                        <input type="number" value={f.wholesalePrice} onChange={e => updatePending(f.id, { wholesalePrice: Number(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xl font-black text-cyan-400 text-center outline-none focus:border-cyan-400/50" />
+                      </div>
                     </div>
-                    <button onClick={() => saveItem(f.id)} disabled={isSaving} className="w-full py-6 bg-white text-black rounded-[2rem] font-black text-xs uppercase hover:bg-pink-500 hover:text-white transition-all">Publicar Ahora</button>
+
+                    <div className="space-y-6">
+                      <div className="space-y-3">
+                        <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest text-center">Configuración de Producto</p>
+                        <div className="flex gap-2">
+                          {(['Hombre', 'Mujer', 'Unisex'] as GenderType[]).map(g => (
+                            <button
+                              key={g}
+                              onClick={() => updatePending(f.id, { gender: g })}
+                              className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase border transition-all ${f.gender === g ? 'bg-white text-black border-transparent shadow-xl' : 'bg-white/5 text-gray-500 border-white/5 hover:bg-white/10'}`}
+                            >
+                              {g}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          {sizeOptions.map(s => (
+                            <button
+                              key={s}
+                              onClick={() => {
+                                const newSizes = f.sizes.includes(s)
+                                  ? f.sizes.filter(x => x !== s)
+                                  : [...f.sizes, s];
+                                updatePending(f.id, { sizes: newSizes });
+                              }}
+                              className={`w-10 h-10 rounded-lg text-[10px] font-black border transition-all ${f.sizes.includes(s) ? 'bg-pink-500 border-transparent text-white scale-110 shadow-lg shadow-pink-500/20' : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10'}`}
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <select
+                        value={f.category}
+                        onChange={e => updatePending(f.id, { category: e.target.value as CategoryType })}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-[10px] font-bold outline-none focus:border-pink-500/50 transition-colors"
+                      >
+                        {['Polos', 'Playeras', 'Accesorios', 'Cuadros', 'Pinturas'].map(cat => (
+                          <option key={cat} value={cat} className="bg-zinc-900">{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button onClick={() => saveItem(f.id)} disabled={isSaving} className="w-full py-6 bg-white text-black rounded-[2rem] font-black text-xs uppercase hover:bg-pink-500 hover:text-white transition-all shadow-2xl active:scale-95">Publicar Ahora</button>
                   </div>
                 </div>
               </div>
@@ -143,7 +233,10 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                     <img src={p.image} className="w-12 h-12 rounded-xl object-cover" />
                     <div className="flex-1">
                       <p className="text-[10px] font-black uppercase truncate">{p.name}</p>
-                      <p className="text-[9px] text-pink-500 font-bold">${p.price}</p>
+                      <div className="flex gap-2">
+                        <p className="text-[9px] text-pink-500 font-bold">${p.price}</p>
+                        <p className="text-[9px] text-cyan-400 font-bold">M: ${p.wholesalePrice}</p>
+                      </div>
                     </div>
                     <button onClick={() => removeProduct(p.id)} className="opacity-0 group-hover:opacity-100 p-2 text-red-500 transition-all">✕</button>
                   </div>
