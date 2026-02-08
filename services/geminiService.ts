@@ -103,12 +103,13 @@ export const geminiService = {
       
       INVENTARIO ACTUAL: ${productsContext}`;
 
+      const fullInstruction = mode === 'admin' ? adminInstruction : storeInstruction;
       const response = await ai.models.generateContent({
         model: 'gemini-1.5-flash',
-        contents,
-        config: {
-          systemInstruction: mode === 'admin' ? adminInstruction : storeInstruction,
-        },
+        contents: [
+          { role: 'user', parts: [{ text: `INSTRUCCIONES DE PERSONALIDAD: ${fullInstruction}` }] },
+          ...contents
+        ]
       });
       return { text: response.text };
     } catch (error) {
