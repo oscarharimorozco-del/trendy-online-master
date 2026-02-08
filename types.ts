@@ -25,7 +25,10 @@ export interface Product {
   gender: GenderType;
   image: string;
   description: string;
-  sizes: string[]; 
+  sizes: string[];
+  isPromotion?: boolean;
+  isSoldOut?: boolean;
+  promoPrice?: number;
 }
 
 export interface GalleryItem {
@@ -34,6 +37,7 @@ export interface GalleryItem {
   type: 'image' | 'video';
   name: string;
   category: CategoryType;
+  isFeatured?: boolean;
 }
 
 export interface ChatMessage {

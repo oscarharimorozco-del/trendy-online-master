@@ -113,12 +113,22 @@ const Shop: React.FC = () => {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-8">
                     <p className="text-[10px] text-white/60 font-medium leading-relaxed italic">"{p.description}"</p>
                   </div>
-                  <div className="absolute top-6 left-6">
+                  <div className="absolute top-6 left-6 flex flex-col gap-2">
                     <span className="bg-black/80 backdrop-blur-xl px-4 py-2 rounded-full text-[8px] font-black uppercase text-white tracking-[0.3em] border border-white/10 shadow-2xl">Premium Collection</span>
+                    {p.isPromotion && (
+                      <span className="bg-yellow-500 text-black px-4 py-2 rounded-full text-[8px] font-black uppercase tracking-[0.2em] animate-pulse shadow-lg shadow-yellow-500/50 flex items-center gap-2">
+                        <span className="text-sm">⚡</span> PROMOCIÓN
+                      </span>
+                    )}
+                    {p.isSoldOut && (
+                      <span className="bg-red-500 text-white px-4 py-2 rounded-full text-[8px] font-black uppercase tracking-[0.2em] shadow-lg shadow-red-500/50 flex items-center gap-2">
+                        <span className="text-sm">🚫</span> AGOTADO
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div className="pt-8 px-4 flex flex-col flex-1 space-y-6">
+                <div className={`pt-8 px-4 flex flex-col flex-1 space-y-6 ${p.isSoldOut ? 'opacity-50 grayscale' : ''}`}>
                   <div className="space-y-4">
                     <div className="flex justify-between items-start">
                       <div>
@@ -126,8 +136,17 @@ const Shop: React.FC = () => {
                         <p className="text-gray-600 text-[10px] font-bold uppercase tracking-widest">{p.category} | {p.gender}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-3xl font-black text-white italic tracking-tighter leading-none">${p.price}</p>
-                        <p className="text-[8px] font-black text-gray-500 uppercase tracking-tighter mt-1">Precio Unitario</p>
+                        {p.isPromotion && p.promoPrice ? (
+                          <>
+                            <p className="text-3xl font-black text-yellow-500 italic tracking-tighter leading-none">${p.promoPrice}</p>
+                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-tighter mt-1 line-through opacity-50">${p.price}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-3xl font-black text-white italic tracking-tighter leading-none">${p.price}</p>
+                            <p className="text-[8px] font-black text-gray-500 uppercase tracking-tighter mt-1">Precio Unitario</p>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -148,6 +167,7 @@ const Shop: React.FC = () => {
                       {p.sizes.map(s => (
                         <button
                           key={s}
+                          disabled={p.isSoldOut}
                           onClick={() => setSelectedSizes(prev => ({ ...prev, [p.id]: s }))}
                           className={`flex-1 py-2 rounded-xl text-[9px] font-black transition-all ${(selectedSizes[p.id] || p.sizes[0]) === s ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}
                         >
@@ -158,13 +178,19 @@ const Shop: React.FC = () => {
                   )}
 
                   <div className="pt-2">
-                    <button
-                      id={`btn-${p.id}`}
-                      onClick={() => handleAddToCart(p)}
-                      className="w-full py-5 bg-white text-black rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-pink-500 hover:text-white transition-all transform active:scale-95"
-                    >
-                      Añadir al Carrito
-                    </button>
+                    {p.isSoldOut ? (
+                      <div className="w-full py-5 bg-white/5 text-gray-500 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] text-center border border-white/5">
+                        Producto Agotado
+                      </div>
+                    ) : (
+                      <button
+                        id={`btn-${p.id}`}
+                        onClick={() => handleAddToCart(p)}
+                        className="w-full py-5 bg-white text-black rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-pink-500 hover:text-white transition-all transform active:scale-95"
+                      >
+                        Añadir al Carrito
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

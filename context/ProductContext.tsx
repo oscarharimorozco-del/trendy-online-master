@@ -7,9 +7,11 @@ interface ProductContextType {
   products: Product[];
   gallery: GalleryItem[];
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
+  updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
   removeProduct: (id: string) => Promise<void>;
   addToGallery: (item: Omit<GalleryItem, 'id'>) => Promise<void>;
   removeFromGallery: (id: string) => Promise<void>;
+  updateGalleryItem: (id: string, updates: Partial<GalleryItem>) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -65,6 +67,17 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const updateProduct = async (id: string, updates: Partial<Product>) => {
+    try {
+      const { error } = await supabase.from('products').update(updates).eq('id', id);
+      if (error) throw error;
+      setProducts(products.map(p => p.id === id ? { ...p, ...updates } : p));
+    } catch (error: any) {
+      console.error('Error updating product:', error);
+      alert(`Error al actualizar: ${error.message}`);
+    }
+  };
+
   const removeProduct = async (id: string) => {
     try {
       const { error } = await supabase
@@ -107,14 +120,27 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const updateGalleryItem = async (id: string, updates: Partial<GalleryItem>) => {
+    try {
+      const { error } = await supabase.from('gallery').update(updates).eq('id', id);
+      if (error) throw error;
+      setGallery(gallery.map(item => item.id === id ? { ...item, ...updates } : item));
+    } catch (error: any) {
+      console.error('Error updating gallery item:', error);
+      alert(`Error al actualizar galería: ${error.message}`);
+    }
+  };
+
   return (
     <ProductContext.Provider value={{
       products,
       gallery,
       addProduct,
+      updateProduct,
       removeProduct,
       addToGallery,
       removeFromGallery,
+      updateGalleryItem,
       isLoading
     }}>
       {children}

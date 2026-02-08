@@ -2,8 +2,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { geminiService } from '../services/geminiService';
+import { useProducts } from '../context/ProductContext';
 
 const Home: React.FC = () => {
+  const { products } = useProducts();
   const [tip, setTip] = useState('Elevando el estilo masculino...');
   const [tipLoading, setTipLoading] = useState(true);
 
@@ -53,6 +55,45 @@ const Home: React.FC = () => {
           <p className="text-2xl text-gray-300 max-w-xl font-light leading-relaxed">
             La curaduría perfecta para el hombre que no busca destacar, sino ser recordado.
           </p>
+          {/* Featured Grid (Promociones con Destello) */}
+          {(() => {
+            const promotions = products.filter(p => p.isPromotion);
+            if (promotions.length === 0) return null;
+            return (
+              <section className="animate-fade-in">
+                <div className="flex justify-between items-end mb-16">
+                  <div className="space-y-4">
+                    <span className="bg-yellow-500 text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.4em] shadow-lg shadow-yellow-500/20">⚡ Flash Deals ACTIVAS</span>
+                    <h2 className="text-7xl font-black tracking-tighter uppercase italic leading-none">PROMOCIONES <br /><span className="text-yellow-500">DE ESTA SEMANA</span></h2>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+                  {promotions.map(p => (
+                    <Link to="/shop" key={p.id} className="group relative">
+                      <div className="aspect-[3/4] rounded-[3rem] overflow-hidden bg-white/5 border border-white/5 relative shadow-2xl">
+                        <img src={p.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
+
+                        {/* Efecto Destello (Flash Sparkle) */}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out pointer-events-none"></div>
+
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-8 text-center ring-inset ring-2 ring-yellow-500/50 m-4 rounded-[2rem]">
+                          <span className="text-[10px] font-black uppercase text-yellow-500 mb-2">¡Oportunidad Única!</span>
+                          <p className="text-2xl font-black text-white leading-none mb-6 italic">${p.price}</p>
+                          <button className="bg-white text-black px-8 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-yellow-500 transition-colors">Ver en Tienda</button>
+                        </div>
+
+                        <div className="absolute bottom-6 left-6 right-6 flex justify-between items-center z-10">
+                          <p className="text-[10px] font-black uppercase text-white drop-shadow-lg">{p.name}</p>
+                          <span className="bg-yellow-500 text-black px-3 py-1 rounded-full text-[8px] font-black">⚡ -{Math.round((1 - (p.wholesalePrice / p.price)) * 100)}%</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
+
           <div className="flex flex-wrap gap-6">
             <Link to="/shop?gender=Hombre" className="accent-gradient text-white px-10 md:px-14 py-6 rounded-full font-black text-sm uppercase tracking-widest hover:scale-105 transition-all shadow-2xl shadow-pink-500/30 ring-2 ring-white/10 flex items-center gap-4 group/btn">
               <span>Hombre</span>
@@ -84,33 +125,50 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Featured Grid */}
+      {/* Featured Grid (Basado en Galería "isFeatured") */}
       <section>
         <div className="flex justify-between items-end mb-20">
           <div className="space-y-2">
-            <h2 className="text-6xl font-black tracking-tighter uppercase italic">Essential <span className="text-gradient">Drops</span></h2>
-            <p className="text-gray-500 text-lg uppercase font-bold tracking-widest">Limitados. Premium. Únicos.</p>
+            <h2 className="text-6xl font-black tracking-tighter uppercase italic">Master <span className="text-gradient">Gallery Highlights</span></h2>
+            <p className="text-gray-500 text-lg uppercase font-bold tracking-widest">Momentos Maestros. Curaduría Exclusiva.</p>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          {[
-            { name: "Polos Luxury", img: "https://images.unsplash.com/photo-1598533022411-ad4b23659397?auto=format&fit=crop&q=80&w=800", cat: "Polos" },
-            { name: "Essential Tees", img: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=800", cat: "Playeras" },
-            { name: "Masters Gear", img: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=800", cat: "Accesorios" },
-          ].map((item, idx) => (
-            <div key={idx} className="group relative">
-              <div className="aspect-[4/5] rounded-[40px] overflow-hidden mb-8 bg-white/5 border border-white/5 shadow-2xl">
-                <img src={item.img} alt={item.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-[1.5s] group-hover:scale-110" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all flex items-end p-12">
-                  <Link to="/shop" className="w-full py-5 glass text-white rounded-2xl font-black text-xs uppercase tracking-widest text-center hover:bg-white hover:text-black transition-all">
-                    Ver {item.cat}
-                  </Link>
+          {(() => {
+            const { gallery } = useProducts();
+            const featuredItems = gallery.filter(item => item.isFeatured).slice(0, 3);
+
+            // Si no hay destacados, usamos los de por defecto
+            const displayItems = featuredItems.length > 0 ? featuredItems.map(item => ({
+              name: item.name,
+              img: item.url,
+              cat: "Gallery",
+              type: item.type
+            })) : [
+              { name: "Polos Luxury", img: "https://images.unsplash.com/photo-1598533022411-ad4b23659397?auto=format&fit=crop&q=80&w=800", cat: "Polos", type: 'image' },
+              { name: "Essential Tees", img: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=800", cat: "Playeras", type: 'image' },
+              { name: "Masters Gear", img: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=800", cat: "Accesorios", type: 'image' },
+            ];
+
+            return displayItems.map((item, idx) => (
+              <div key={idx} className="group relative">
+                <div className="aspect-[4/5] rounded-[40px] overflow-hidden mb-8 bg-white/5 border border-white/5 shadow-2xl relative">
+                  {item.type === 'video' ? (
+                    <video src={item.img} className="w-full h-full object-cover" autoPlay muted loop />
+                  ) : (
+                    <img src={item.img} alt={item.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-[1.5s] group-hover:scale-110" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all flex items-end p-12">
+                    <Link to="/gallery" className="w-full py-5 glass text-white rounded-2xl font-black text-xs uppercase tracking-widest text-center hover:bg-white hover:text-black transition-all">
+                      Ver en Galería
+                    </Link>
+                  </div>
                 </div>
+                <h3 className="text-3xl font-black tracking-tighter">{item.name}</h3>
+                <p className="text-gray-600 font-black text-[10px] uppercase tracking-widest mt-1">Visión Trendy</p>
               </div>
-              <h3 className="text-3xl font-black tracking-tighter">{item.name}</h3>
-              <p className="text-gray-600 font-black text-[10px] uppercase tracking-widest mt-1">Calidad Garantizada</p>
-            </div>
-          ))}
+            ));
+          })()}
         </div>
       </section>
     </div>
