@@ -2,8 +2,8 @@ import { AspectRatio, ImageSize } from "../types";
 
 const getApiKey = () => (import.meta.env.VITE_GEMINI_API_KEY as string)?.trim() || "";
 
-const storeInstruction = "Eres el Curador Maestro de Gihart & Hersel. Tu misión es ayudar al CLIENTE a encontrar piezas de arte y moda de lujo. Tono elegante y sofisticado. Siempre dirige al cierre de venta en WhatsApp.";
-const adminInstruction = "Eres el Director de Estrategia de Gihart & Hersel. Tu misión es ayudar al ADMINISTRADOR a gestionar el negocio. Crea anuncios seguros para Facebook, reescribe descripciones en tono de lujo e inventa nombres creativos. Si el usuario sube una imagen, analízala y brinda consejos específicos sobre ella.";
+const storeInstruction = "Eres el Curador Maestro de Gihart & Hersel. Tono sofisticado. Ayuda al cliente y cierra en WhatsApp.";
+const adminInstruction = "Eres el Director de Estrategia. Sé breve, ejecutivo y directo. No saludes con textos largos. Si hay imagen, úsala para cumplir la orden del usuario (crear descripción, anuncio, etc.) de forma inmediata.";
 
 let cachedModel: string | null = null;
 
@@ -18,13 +18,10 @@ export const geminiService = {
           m.supportedGenerationMethods.includes('generateContent') &&
           (m.name.includes('flash') || m.name.includes('pro'))
         );
-        if (best) {
-          cachedModel = best.name;
-          return cachedModel;
-        }
+        if (best) { cachedModel = best.name; return cachedModel; }
       }
-    } catch (e) { console.error("Error discovering model:", e); }
-    return 'models/gemini-1.5-flash'; // Priorize flash for speed
+    } catch (e) { console.error(e); }
+    return 'models/gemini-1.5-flash';
   },
 
   chat: async (history: any[], message: string, productsContext: string, mode: 'store' | 'admin' = 'store', imageBase64?: string) => {
@@ -34,19 +31,14 @@ export const geminiService = {
 
     try {
       const fullInstruction = mode === 'admin' ? adminInstruction : storeInstruction;
-      const prompt = `INSTRUCCIONES DE PERSONALIDAD: ${fullInstruction}\n\nINVENTARIO ACTUAL: ${productsContext}\n\nMENSAJE DEL USUARIO: ${message}`;
+      const prompt = `INSTRUCCIONES: ${fullInstruction}\n\nCONTEXTO: ${productsContext}\n\nORDEN: ${message}`;
 
       const parts: any[] = [{ text: prompt }];
 
       if (imageBase64) {
         const mimeType = imageBase64.match(/:(.*?);/)?.[1] || "image/png";
         const data = imageBase64.split(',')[1];
-        parts.push({
-          inline_data: {
-            mime_type: mimeType,
-            data: data
-          }
-        });
+        parts.push({ inline_data: { mime_type: mimeType, data: data } });
       }
 
       const response = await fetch(url, {
@@ -69,7 +61,7 @@ export const geminiService = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: `Vendedor de arte y moda de lujo: ${text}` }] }],
+          contents: [{ parts: [{ text: `Responsable de tienda: ${text}` }] }],
           generationConfig: { responseModalities: ["AUDIO"] }
         })
       });
@@ -78,26 +70,17 @@ export const geminiService = {
     } catch (e) { return null; }
   },
 
-  // IMAGEN: Generación real con Gemini 1.5 Flash (soporta multimodal pero no generación directa de imagen per se, 
-  // pero usaremos el prompt para guiar si hay algún plugin o simplemente simularemos la respuesta de lujo si el modelo cambia)
-  // NOTA: Gemini 1.5 no genera imágenes DIRECTAMENTE (usa Imagen), pero para este flujo usaremos un placeholder de alta calidad
-  // o conectaremos a una API de imagen si el usuario lo requiere. Por ahora, habilitaremos el flujo de "análisis y edición".
-
   generateImage: async (prompt: string, aspectRatio: AspectRatio, imageSize: ImageSize) => {
-    // Para demostración premium, si no hay API de imagen activa, devolvemos un error descriptivo o usamos un proxy.
-    // Pero el usuario quiere que "funcione". Usaremos el modelo para describir y luego lo integraremos.
-    throw new Error("Para generar imágenes artísticas se requiere el motor 'Imagen' activado en Google Cloud.");
+    throw new Error("Motor 'Imagen' no vinculado.");
   },
 
   editImage: async (sourceImageBase64: string, prompt: string) => {
-    // Esto es multimodal: enviamos la imagen + el prompt de edición
     const apiKey = getApiKey();
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     try {
       const mimeType = sourceImageBase64.match(/:(.*?);/)?.[1] || "image/png";
       const data = sourceImageBase64.split(',')[1];
-
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,23 +88,21 @@ export const geminiService = {
           contents: [{
             parts: [
               { inline_data: { mime_type: mimeType, data: data } },
-              { text: `INSTRUCCIÓN DE EDICIÓN: ${prompt}. Describe los cambios sugeridos detalladamente ya que el editor visual se encargará del renderizado.` }
+              { text: `Edita esta imagen siguiendo esta orden: ${prompt}` }
             ]
           }]
         })
       });
       const resData = await response.json();
       return resData.candidates?.[0]?.content?.parts?.[0]?.text;
-    } catch (e: any) {
-      throw e;
-    }
+    } catch (e: any) { throw e; }
   },
 
   getQuickSuggestion: async (topic: string) => {
     try {
-      const res = await geminiService.chat([], `Sugerencia corta de 10 palabras sobre: ${topic}`, "");
+      const res = await geminiService.chat([], `10 palabras sobre: ${topic}`, "");
       return res.text;
-    } catch { return "El lujo es una declaración de principios."; }
+    } catch { return "Legacy of Luxury."; }
   },
 
   utils: {
