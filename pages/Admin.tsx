@@ -165,7 +165,38 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             <h3 className="text-xl font-black italic">Sales <span className="text-pink-500">Social</span></h3>
             <div className="space-y-4">
               <input type="text" value={social.whatsappNumber} onChange={e => setSocial({ ...social, whatsappNumber: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs font-bold" placeholder="WhatsApp" />
-              <button onClick={() => localStorage.setItem('wa_number', social.whatsappNumber)} className="w-full py-4 bg-white text-black font-black text-[10px] uppercase rounded-2xl">Guardar WhatsApp</button>
+              <button onClick={() => {
+                localStorage.setItem('wa_number', social.whatsappNumber);
+                alert("WhatsApp guardado");
+              }} className="w-full py-4 bg-white text-black font-black text-[10px] uppercase rounded-2xl hover:bg-pink-500 hover:text-white transition-colors">Guardar WhatsApp</button>
+            </div>
+          </section>
+
+          <section className="bg-white/5 p-10 rounded-[3rem] space-y-6 border border-white/10">
+            <h3 className="text-xl font-black italic">IA <span className="text-cyan-400">Settings</span></h3>
+            <p className="text-[9px] text-gray-500 uppercase font-black leading-relaxed">Si el agente deja de responder, pega una nueva clave de Gemini aquí:</p>
+            <div className="space-y-4">
+              <input
+                type="password"
+                defaultValue={localStorage.getItem('custom_gemini_key') || ''}
+                onBlur={(e) => {
+                  if (e.target.value) {
+                    localStorage.setItem('custom_gemini_key', e.target.value);
+                    alert("Clave de IA actualizada. Refresca la página.");
+                  }
+                }}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs font-bold text-cyan-400"
+                placeholder="Pega tu nueva API Key aquí..."
+              />
+              <button
+                onClick={() => {
+                  localStorage.removeItem('custom_gemini_key');
+                  window.location.reload();
+                }}
+                className="w-full py-2 text-[9px] text-gray-600 font-black uppercase hover:text-white transition-colors"
+              >
+                Restablecer a clave original
+              </button>
             </div>
           </section>
         </div>

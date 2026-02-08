@@ -1,6 +1,10 @@
 import { AspectRatio, ImageSize } from "../types";
 
-const getApiKey = () => (import.meta.env.VITE_GEMINI_API_KEY as string)?.trim() || "";
+const getApiKey = () => {
+  const localKey = localStorage.getItem('custom_gemini_key');
+  if (localKey) return localKey.trim();
+  return (import.meta.env.VITE_GEMINI_API_KEY as string)?.trim() || "";
+};
 
 const storeInstruction = "Eres el Curador Maestro de Gihart & Hersel. Tono sofisticado. Ayuda al cliente y cierra en WhatsApp.";
 const adminInstruction = "Eres el Director de Estrategia. Sé breve, ejecutivo y directo. No saludes con textos largos. Si hay imagen, úsala para cumplir la orden del usuario (crear descripción, anuncio, etc.) de forma inmediata.";
