@@ -87,13 +87,19 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addProduct = async (product: Omit<Product, 'id'>) => {
     try {
-      const dbProduct = {
+      const dbProduct: any = {
         ...product,
         wholesale_price: product.wholesalePrice,
         promo_price: product.promoPrice,
         is_promotion: product.isPromotion,
         is_sold_out: product.isSoldOut
       };
+
+      // Remove camelCase properties to avoid "Column not found" errors
+      delete dbProduct.wholesalePrice;
+      delete dbProduct.promoPrice;
+      delete dbProduct.isPromotion;
+      delete dbProduct.isSoldOut;
 
       const { data, error } = await supabase
         .from('products')
@@ -147,10 +153,13 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addToGallery = async (item: Omit<GalleryItem, 'id'>) => {
     try {
-      const dbItem = {
+      const dbItem: any = {
         ...item,
         is_featured: item.isFeatured
       };
+
+      // Remove camelCase property
+      delete dbItem.isFeatured;
 
       const { data, error } = await supabase
         .from('gallery')
