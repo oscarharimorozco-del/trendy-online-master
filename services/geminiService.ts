@@ -1,9 +1,17 @@
 import { AspectRatio, ImageSize } from "../types";
 
-const getApiKey = () => {
-  const localKey = localStorage.getItem('custom_gemini_key');
-  if (localKey) return localKey.trim();
-  return (import.meta.env.VITE_GEMINI_API_KEY as string)?.trim() || "";
+// Gestión inteligente de múltiples llaves de API
+const getApiKeys = (): string[] => {
+  const localKeys = localStorage.getItem('custom_gemini_keys');
+  if (localKeys) {
+    try {
+      const parsed = JSON.parse(localKeys);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {
+      return [localKeys.trim()];
+    }
+  }
+  return [(import.meta.env.VITE_GEMINI_API_KEY as string)?.trim() || ""];
 };
 
 const storeInstruction = "Eres el Curador Maestro de Gihart & Hersel. Tono sofisticado. Ayuda al cliente y cierra en WhatsApp.";
@@ -28,15 +36,35 @@ export const geminiService = {
     return 'models/gemini-1.5-flash';
   },
 
-  chat: async (history: any[], message: string, productsContext: string, mode: 'store' | 'admin' = 'store', imageBase64?: string) => {
-    const apiKey = getApiKey();
-    const modelPath = await geminiService.discoverBestModel(apiKey);
-    const url = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateContent?key=${apiKey}`;
+  // Función de reintento inteligente
+  request: async (fn: (key: string) => Promise<any>): Promise<any> => {
+    const keys = getApiKeys();
+    let lastError: any = null;
 
-    try {
+    for (const key of keys) {
+      try {
+        if (!key) continue;
+        return await fn(key);
+      } catch (error: any) {
+        lastError = error;
+        // Si el error es de cuota (429) o autorización (403), probamos con la siguiente llave
+        if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('403') || error.message?.includes('API_KEY_INVALID')) {
+          console.warn("Llave agotada o inválida, probando la siguiente...");
+          continue;
+        }
+        throw error; // Si es otro tipo de error, lo lanzamos
+      }
+    }
+    throw lastError || new Error("Todas las llaves de API están agotadas.");
+  },
+
+  chat: async (history: any[], message: string, productsContext: string, mode: 'store' | 'admin' = 'store', imageBase64?: string) => {
+    return geminiService.request(async (apiKey) => {
+      const modelPath = await geminiService.discoverBestModel(apiKey);
+      const url = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateContent?key=${apiKey}`;
+
       const fullInstruction = mode === 'admin' ? adminInstruction : storeInstruction;
       const prompt = `INSTRUCCIONES: ${fullInstruction}\n\nCONTEXTO: ${productsContext}\n\nORDEN: ${message}`;
-
       const parts: any[] = [{ text: prompt }];
 
       if (imageBase64) {
@@ -52,15 +80,14 @@ export const geminiService = {
       });
 
       const data = await response.json();
-      if (data.error) throw new Error(data.error.message);
+      if (data.error) throw new Error(`${data.error.code}: ${data.error.message}`);
       return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "Sin respuesta." };
-    } catch (error: any) { throw error; }
+    });
   },
 
   generateVoiceResponse: async (text: string) => {
-    const apiKey = getApiKey();
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    try {
+    return geminiService.request(async (apiKey) => {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,19 +97,14 @@ export const geminiService = {
         })
       });
       const data = await response.json();
+      if (data.error) throw new Error(data.error.message);
       return data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    } catch (e) { return null; }
-  },
-
-  generateImage: async (prompt: string, aspectRatio: AspectRatio, imageSize: ImageSize) => {
-    throw new Error("Motor 'Imagen' no vinculado.");
+    }).catch(() => null);
   },
 
   editImage: async (sourceImageBase64: string, prompt: string) => {
-    const apiKey = getApiKey();
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-    try {
+    return geminiService.request(async (apiKey) => {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       const mimeType = sourceImageBase64.match(/:(.*?);/)?.[1] || "image/png";
       const data = sourceImageBase64.split(',')[1];
       const response = await fetch(url, {
@@ -98,8 +120,9 @@ export const geminiService = {
         })
       });
       const resData = await response.json();
+      if (resData.error) throw new Error(resData.error.message);
       return resData.candidates?.[0]?.content?.parts?.[0]?.text;
-    } catch (e: any) { throw e; }
+    });
   },
 
   getQuickSuggestion: async (topic: string) => {

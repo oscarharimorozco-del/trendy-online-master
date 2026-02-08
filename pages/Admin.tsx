@@ -174,28 +174,37 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
           <section className="bg-white/5 p-10 rounded-[3rem] space-y-6 border border-white/10">
             <h3 className="text-xl font-black italic">IA <span className="text-cyan-400">Settings</span></h3>
-            <p className="text-[9px] text-gray-500 uppercase font-black leading-relaxed">Si el agente deja de responder, pega una nueva clave de Gemini aquí:</p>
             <div className="space-y-4">
-              <input
-                type="password"
-                defaultValue={localStorage.getItem('custom_gemini_key') || ''}
+              <p className="text-[9px] text-gray-400 uppercase font-black leading-relaxed">
+                Pega tus llaves de API (una por línea). El sistema rotará automáticamente si una se agota:
+              </p>
+              <textarea
+                defaultValue={(() => {
+                  const keys = localStorage.getItem('custom_gemini_keys');
+                  if (!keys) return '';
+                  try {
+                    const parsed = JSON.parse(keys);
+                    return Array.isArray(parsed) ? parsed.join('\n') : keys;
+                  } catch { return keys; }
+                })()}
                 onBlur={(e) => {
-                  if (e.target.value) {
-                    localStorage.setItem('custom_gemini_key', e.target.value);
-                    alert("Clave de IA actualizada. Refresca la página.");
+                  const keys = e.target.value.split('\n').map(k => k.trim()).filter(k => k !== '');
+                  if (keys.length > 0) {
+                    localStorage.setItem('custom_gemini_keys', JSON.stringify(keys));
+                    alert(`¡${keys.length} llaves configuradas! Refresca para activar.`);
                   }
                 }}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs font-bold text-cyan-400"
-                placeholder="Pega tu nueva API Key aquí..."
+                className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-[10px] font-mono text-cyan-400 min-h-[120px] outline-none focus:border-cyan-500"
+                placeholder="Llave 1&#10;Llave 2&#10;Llave 3..."
               />
               <button
                 onClick={() => {
-                  localStorage.removeItem('custom_gemini_key');
+                  localStorage.removeItem('custom_gemini_keys');
                   window.location.reload();
                 }}
                 className="w-full py-2 text-[9px] text-gray-600 font-black uppercase hover:text-white transition-colors"
               >
-                Restablecer a clave original
+                Restablecer a llave de fábrica
               </button>
             </div>
           </section>
