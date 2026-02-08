@@ -5,18 +5,18 @@ import { Product } from '../types';
 
 const Shop: React.FC = () => {
   const { products } = useProducts();
-  const [activeCategory, setActiveCategory] = useState<string>('Polos');
-  const [activeSize, setActiveSize] = useState<string | null>('M');
+  const [activeCategory, setActiveCategory] = useState<string>('Todo');
+  const [activeSize, setActiveSize] = useState<string | null>(null);
 
-  const categories = ['Polos', 'Playeras', 'Accesorios'];
+  const categories = ['Todo', 'Polos', 'Playeras', 'Accesorios', 'Cuadros', 'Pinturas', 'Videos'];
   const sizes = ['S', 'M', 'L', 'XL', '2XL'];
 
   const waNumber = localStorage.getItem('wa_number') || '+521234567890';
 
   const filtered = useMemo(() => {
     return products.filter(p => {
-      const matchCat = p.category === activeCategory;
-      if (activeCategory === 'Accesorios') return matchCat;
+      const matchCat = activeCategory === 'Todo' ? true : p.category === activeCategory;
+      if (['Accesorios', 'Cuadros', 'Pinturas', 'Videos'].includes(activeCategory)) return matchCat;
       return matchCat && (!activeSize || p.sizes?.includes(activeSize));
     });
   }, [products, activeCategory, activeSize]);
@@ -34,7 +34,7 @@ const Shop: React.FC = () => {
               key={cat}
               onClick={() => {
                 setActiveCategory(cat);
-                if (cat === 'Accesorios') setActiveSize(null);
+                if (['Accesorios', 'Cuadros', 'Pinturas', 'Videos'].includes(cat) || cat === 'Todo') setActiveSize(null);
                 else setActiveSize('M');
               }}
               className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeCategory === cat ? 'accent-gradient shadow-xl' : 'bg-white/5 text-gray-500 border border-white/5 hover:bg-white/10'}`}
@@ -47,7 +47,7 @@ const Shop: React.FC = () => {
 
       <div className="flex flex-col xl:flex-row gap-12">
         {/* FILTROS */}
-        {activeCategory !== 'Accesorios' && (
+        {(!['Accesorios', 'Cuadros', 'Pinturas', 'Videos'].includes(activeCategory)) && activeCategory !== 'Todo' && (
           <aside className="xl:w-72 space-y-8 shrink-0">
             <div className="glass p-8 rounded-[2.5rem] border-white/10 sticky top-28">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-pink-500 mb-6 text-center">Filtrar por Talla</h3>
@@ -93,7 +93,7 @@ const Shop: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="mb-6 flex flex-wrap gap-1">
                     {p.sizes?.map(s => (
                       <span key={s} className="text-[8px] font-black bg-white/5 px-2 py-1 rounded border border-white/5 text-gray-400 uppercase">{s}</span>
@@ -101,10 +101,10 @@ const Shop: React.FC = () => {
                   </div>
 
                   <p className="text-xs text-gray-500 italic line-clamp-2 mb-8 leading-relaxed">"{p.description}"</p>
-                  
+
                   <div className="mt-auto">
-                    <a 
-                      href={`https://wa.me/${waNumber.replace('+', '')}?text=Hola! Me interesa: ${p.name}. Talla: ${activeSize || 'Verificar'}.`} 
+                    <a
+                      href={`https://wa.me/${waNumber.replace('+', '')}?text=Hola! Me interesa: ${p.name}. Talla: ${activeSize || 'Verificar'}.`}
                       target="_blank"
                       className="w-full py-4 accent-gradient text-center rounded-2xl text-[10px] font-black uppercase tracking-widest hover:brightness-125 transition-all block text-white shadow-xl shadow-pink-500/10"
                     >
@@ -115,7 +115,7 @@ const Shop: React.FC = () => {
               </div>
             ))}
           </div>
-          
+
           {filtered.length === 0 && (
             <div className="text-center py-40 glass rounded-[3rem] border-dashed border-white/10 border-2">
               <h3 className="text-xl font-bold text-gray-700 italic uppercase tracking-widest">Sin stock en esta selección</h3>

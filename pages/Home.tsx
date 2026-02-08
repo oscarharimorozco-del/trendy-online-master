@@ -33,9 +33,9 @@ const Home: React.FC = () => {
 
       {/* Hero Section */}
       <section className="relative rounded-3xl md:rounded-[50px] overflow-hidden h-[500px] md:h-[650px] lg:h-[750px] flex items-center group animate-fade-in">
-        <img 
-          src="https://images.unsplash.com/photo-1550246140-5119ae4790b8?auto=format&fit=crop&q=80&w=2000" 
-          alt="Estilo de lujo masculino" 
+        <img
+          src="https://images.unsplash.com/photo-1550246140-5119ae4790b8?auto=format&fit=crop&q=80&w=2000"
+          alt="Estilo de lujo masculino"
           loading="lazy"
           className="absolute inset-0 w-full h-full object-cover opacity-50 scale-110 group-hover:scale-100 transition-transform duration-[4000ms] ease-out"
         />
@@ -43,7 +43,7 @@ const Home: React.FC = () => {
         <div className="relative z-10 max-w-4xl mx-4 md:mx-8 lg:ml-16 space-y-8 md:space-y-12">
           <div className="animate-float">
             <span className="accent-gradient text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.4em] shadow-2xl">
-              Nivel Maestro 2025
+              Nivel Maestro 2025 <span className="opacity-50 ml-2">| BUILD 2.5 - READY</span>
             </span>
           </div>
           <h1 className="text-5xl sm:text-7xl lg:text-9xl font-black tracking-tighter leading-[0.8] drop-shadow-2xl">
