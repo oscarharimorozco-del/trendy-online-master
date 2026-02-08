@@ -50,7 +50,7 @@ export const geminiService = {
   },
 
   generateVoiceResponse: async (text: string) => {
-    const ai = new GoogleGenAI(getApiKey());
+    const ai = new GoogleGenAI({ apiKey: getApiKey() });
     try {
       const model = ai.getGenerativeModel({ model: "gemini-pro" });
       const response = await model.generateContent({
@@ -69,7 +69,7 @@ export const geminiService = {
   },
 
   chat: async (history: any[], message: string, productsContext: string, mode: 'store' | 'admin' = 'store') => {
-    const ai = new GoogleGenAI(getApiKey());
+    const ai = new GoogleGenAI({ apiKey: getApiKey() });
     const model = ai.getGenerativeModel({ model: "gemini-pro" });
     try {
       const contents = history.map(m => ({
@@ -89,7 +89,7 @@ export const geminiService = {
   },
 
   getQuickSuggestion: async (topic: string) => {
-    const ai = new GoogleGenAI(getApiKey());
+    const ai = new GoogleGenAI({ apiKey: getApiKey() });
     const model = ai.getGenerativeModel({ model: "gemini-pro" });
     try {
       const response = await model.generateContent(`Sugerencia de estilo/arte (10 palabras): ${topic}`);
