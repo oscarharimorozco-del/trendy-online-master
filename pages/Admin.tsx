@@ -3,6 +3,7 @@ import { CategoryType, GenderType, SocialConfig } from '../types';
 import { useProducts } from '../context/ProductContext';
 import { AdminAgent } from '../components/AdminAgent';
 import { supabase } from '../services/supabase';
+import { QRCodeCanvas } from 'qrcode.react';
 
 interface PendingFile {
   id: string;
@@ -27,6 +28,9 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     facebookStoreUrl: localStorage.getItem('fb_store_url') || '',
     whatsappNumber: localStorage.getItem('wa_number') || '+521'
   });
+
+  const [qrUrl, setQrUrl] = useState(window.location.origin);
+  const qrRef = useRef<HTMLDivElement>(null);
 
   const sizeOptions = ['S', 'M', 'L', 'XL', '2XL'];
 
@@ -123,6 +127,18 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     localStorage.setItem('fb_store_url', social.facebookStoreUrl);
     localStorage.setItem('wa_number', social.whatsappNumber);
     alert("Datos de contacto guardados.");
+  };
+
+  const downloadQR = () => {
+    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+    if (!canvas) return;
+    const url = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `QR-TrendyOnline.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -270,7 +286,50 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 <label className="text-[9px] font-black text-gray-500 uppercase ml-2">Facebook</label>
                 <input type="text" value={social.facebookStoreUrl} onChange={e => setSocial({ ...social, facebookStoreUrl: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none" placeholder="URL Tienda..." />
               </div>
-              <button onClick={saveSocial} className="w-full py-5 bg-white text-black rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-pink-500 hover:text-white transition-all">Guardar Cambios</button>
+              <button onClick={saveSocial} className="w-full py-5 bg-white text-black rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-pink-500 hover:text-white transition-all">Guardar Contactos</button>
+            </div>
+          </section>
+
+          {/* QR GENERATOR */}
+          <section className="bg-white/[0.03] border border-white/10 p-10 rounded-[3rem] space-y-8 relative overflow-hidden group">
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl group-hover:bg-pink-500/20 transition-all"></div>
+            <h3 className="text-xl font-black uppercase tracking-tighter italic">QR <span className="text-cyan-400">Maestro</span></h3>
+
+            <div className="flex flex-col items-center space-y-6">
+              <div className="bg-white p-4 rounded-3xl shadow-2xl">
+                <QRCodeCanvas
+                  value={qrUrl}
+                  size={180}
+                  level="H"
+                  includeMargin={true}
+                  imageSettings={{
+                    src: "/logo.png", // Attempt to use a logo if exists
+                    x: undefined,
+                    y: undefined,
+                    height: 40,
+                    width: 40,
+                    excavate: true,
+                  }}
+                />
+              </div>
+
+              <div className="w-full space-y-2">
+                <label className="text-[9px] font-black text-gray-500 uppercase ml-2 text-center block">URL de Destino</label>
+                <input
+                  type="text"
+                  value={qrUrl}
+                  onChange={e => setQrUrl(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-[10px] text-gray-400 outline-none focus:border-cyan-400 focus:text-white transition-all"
+                />
+              </div>
+
+              <button
+                onClick={downloadQR}
+                className="w-full py-5 bg-cyan-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-cyan-600 transition-all shadow-lg"
+              >
+                📥 Descargar para Imprimir
+              </button>
+              <p className="text-[8px] text-gray-600 text-center uppercase font-bold tracking-widest">Genera QRs para tus bolsas o tarjetas</p>
             </div>
           </section>
         </div>
