@@ -36,28 +36,23 @@ async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: 
 
 export const geminiService = {
   connectAdminLive: (callbacks: any) => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey(), apiVersion: 'v1beta' });
+    const ai = new GoogleGenAI({ apiKey: getApiKey() });
     return ai.live.connect({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-pro',
       callbacks,
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } }
-        },
-        systemInstruction: `Eres el Director de Gihart & Hersel. 
-        Gestionas moda, pero también CUADROS, PINTURAS y VIDEOS de arte.
-        Si el usuario habla de "piezas", se refiere a obras de arte o prendas exclusivas.
-        Ayuda a organizar el inventario masivo de forma eficiente.`
+        }
       }
     });
   },
 
   generateVoiceResponse: async (text: string) => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey(), apiVersion: 'v1beta' });
+    const ai = new GoogleGenAI({ apiKey: getApiKey() });
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+      const response = await ai.getGenerativeModel({ model: "gemini-pro" }).generateContent({
         contents: [{ parts: [{ text: `Vendedor de arte y moda de lujo: ${text}` }] }],
         config: {
           responseModalities: [Modality.AUDIO],
@@ -66,52 +61,26 @@ export const geminiService = {
           }
         }
       });
-      return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      return response.response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     } catch (error) {
       return null;
     }
   },
 
   chat: async (history: any[], message: string, productsContext: string, mode: 'store' | 'admin' = 'store') => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey(), apiVersion: 'v1beta' });
+    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const model = ai.getGenerativeModel({ model: "gemini-pro" });
     try {
       const contents = history.map(m => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: m.text }]
       }));
-      contents.push({ role: 'user', parts: [{ text: message }] });
-
-      const storeInstruction = `Eres el Curador Maestro de Gihart & Hersel.
-      Tu misión es ayudar al CLIENTE a encontrar piezas de arte y moda de lujo.
-      
-      INVENTARIO ACTUAL: ${productsContext}
-      
-      NORMAS:
-      1. Tono elegante, sofisticado y servicial.
-      2. Siempre dirige al cierre de venta en WhatsApp para pedidos personalizados.
-      3. Si el cliente busca algo que no está, ofrece la pieza más similar basándote en el estilo.
-      4. Usa frases cortas y poderosas.`;
-
-      const adminInstruction = `Eres el Director de Estrategia de Gihart & Hersel.
-      Tu misión es ayudar al ADMINISTRADOR a gestionar el negocio.
-      
-      TAREAS:
-      1. Reescribir descripciones aburridas en textos de lujo.
-      2. Crear anuncios para Facebook Marketplace evitando palabras que causen bloqueos (ej. no digas marcas, di "Calidad Premium", "Estilo Atemporal", "Materiales Nobles").
-      3. Analizar el inventario para sugerir qué falta o qué es tendencia.
-      4. Inventar nombres creativos para nuevas piezas.
-      
-      INVENTARIO ACTUAL: ${productsContext}`;
 
       const fullInstruction = mode === 'admin' ? adminInstruction : storeInstruction;
-      const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: [
-          { role: 'user', parts: [{ text: `INSTRUCCIONES DE PERSONALIDAD: ${fullInstruction}` }] },
-          ...contents
-        ]
-      });
-      return { text: response.text };
+      const prompt = `INSTRUCCIONES: ${fullInstruction}\n\nINVENTARIO: ${productsContext}\n\nMENSAJE DEL USUARIO: ${message}`;
+
+      const response = await model.generateContent(prompt);
+      return { text: response.response.text() };
     } catch (error) {
       console.error("Chat Error:", error);
       throw error;
@@ -119,13 +88,11 @@ export const geminiService = {
   },
 
   getQuickSuggestion: async (topic: string) => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey(), apiVersion: 'v1beta' });
+    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const model = ai.getGenerativeModel({ model: "gemini-pro" });
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: `Sugerencia de estilo/arte (10 palabras): ${topic}`,
-      });
-      return response.text;
+      const response = await model.generateContent(`Sugerencia de estilo/arte (10 palabras): ${topic}`);
+      return response.response.text();
     } catch (error) { return "El arte y la moda definen tu legado."; }
   },
 
