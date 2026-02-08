@@ -15,7 +15,7 @@ const getApiKeys = (): string[] => {
 };
 
 const storeInstruction = "Eres el Curador Maestro de Gihart & Hersel. Tono sofisticado. Ayuda al cliente y cierra en WhatsApp.";
-const adminInstruction = "Eres el Director de Estrategia. Sé breve, ejecutivo y directo. No saludes con textos largos. Si hay imagen, úsala para cumplir la orden del usuario (crear descripción, anuncio, etc.) de forma inmediata.";
+const adminInstruction = "Eres el Director de Estrategia. Sé breve, ejecutivo y directo. No saludes con textos largos. Puedes analizar varias imágenes a la vez si el usuario las sube. Úsalas para cumplir la orden del usuario (comparar, describir, crear anuncios, etc.) de forma inmediata.";
 
 let cachedModel: string | null = null;
 
@@ -47,18 +47,17 @@ export const geminiService = {
         return await fn(key);
       } catch (error: any) {
         lastError = error;
-        // Si el error es de cuota (429) o autorización (403), probamos con la siguiente llave
         if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('403') || error.message?.includes('API_KEY_INVALID')) {
           console.warn("Llave agotada o inválida, probando la siguiente...");
           continue;
         }
-        throw error; // Si es otro tipo de error, lo lanzamos
+        throw error;
       }
     }
     throw lastError || new Error("Todas las llaves de API están agotadas.");
   },
 
-  chat: async (history: any[], message: string, productsContext: string, mode: 'store' | 'admin' = 'store', imageBase64?: string) => {
+  chat: async (history: any[], message: string, productsContext: string, mode: 'store' | 'admin' = 'store', imagesBase64?: string[]) => {
     return geminiService.request(async (apiKey) => {
       const modelPath = await geminiService.discoverBestModel(apiKey);
       const url = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateContent?key=${apiKey}`;
@@ -67,10 +66,12 @@ export const geminiService = {
       const prompt = `INSTRUCCIONES: ${fullInstruction}\n\nCONTEXTO: ${productsContext}\n\nORDEN: ${message}`;
       const parts: any[] = [{ text: prompt }];
 
-      if (imageBase64) {
-        const mimeType = imageBase64.match(/:(.*?);/)?.[1] || "image/png";
-        const data = imageBase64.split(',')[1];
-        parts.push({ inline_data: { mime_type: mimeType, data: data } });
+      if (imagesBase64 && imagesBase64.length > 0) {
+        imagesBase64.forEach(img => {
+          const mimeType = img.match(/:(.*?);/)?.[1] || "image/png";
+          const data = img.split(',')[1];
+          parts.push({ inline_data: { mime_type: mimeType, data: data } });
+        });
       }
 
       const response = await fetch(url, {
