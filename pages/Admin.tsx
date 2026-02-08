@@ -71,7 +71,8 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         finalUrl = supabase.storage.from('imagenes').getPublicUrl(filePath).data.publicUrl;
       }
       if (f.target === 'shop') {
-        await addProduct({ ...f, image: finalUrl });
+        const { id, src, target, ...cleanProduct } = f;
+        await addProduct({ ...cleanProduct, image: finalUrl });
       } else {
         await addToGallery({ url: finalUrl, type: f.src.startsWith('data:video') ? 'video' : 'image', name: f.name, category: 'Videos' });
       }

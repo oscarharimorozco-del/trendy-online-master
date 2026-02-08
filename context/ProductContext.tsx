@@ -59,9 +59,9 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (error) throw error;
       if (data) setProducts([data[0], ...products]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding product:', error);
-      alert('Error al guardar el producto en la nube.');
+      alert(`Error en la nube: ${error.message || 'Error desconocido'}`);
     }
   };
 
