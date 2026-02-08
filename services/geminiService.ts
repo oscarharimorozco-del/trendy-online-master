@@ -36,7 +36,7 @@ async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: 
 
 export const geminiService = {
   connectAdminLive: (callbacks: any) => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const ai = new GoogleGenAI({ apiKey: getApiKey(), apiVersion: 'v1' });
     return ai.live.connect({
       model: 'gemini-1.5-flash',
       callbacks,
@@ -54,7 +54,7 @@ export const geminiService = {
   },
 
   generateVoiceResponse: async (text: string) => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const ai = new GoogleGenAI({ apiKey: getApiKey(), apiVersion: 'v1' });
     try {
       const response = await ai.models.generateContent({
         model: "gemini-1.5-flash",
@@ -73,7 +73,7 @@ export const geminiService = {
   },
 
   chat: async (history: any[], message: string, productsContext: string, mode: 'store' | 'admin' = 'store') => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const ai = new GoogleGenAI({ apiKey: getApiKey(), apiVersion: 'v1' });
     try {
       const contents = history.map(m => ({
         role: m.role === 'user' ? 'user' : 'model',
@@ -118,7 +118,7 @@ export const geminiService = {
   },
 
   getQuickSuggestion: async (topic: string) => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const ai = new GoogleGenAI({ apiKey: getApiKey(), apiVersion: 'v1' });
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-1.5-flash',
