@@ -6,12 +6,14 @@ import { supabase } from '../services/supabase';
 interface ProductContextType {
   products: Product[];
   gallery: GalleryItem[];
+  settings: Record<string, string>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
   removeProduct: (id: string) => Promise<void>;
   addToGallery: (item: Omit<GalleryItem, 'id'>) => Promise<void>;
   removeFromGallery: (id: string) => Promise<void>;
   updateGalleryItem: (id: string, updates: Partial<GalleryItem>) => Promise<void>;
+  updateSettings: (key: string, value: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -20,6 +22,9 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [settings, setSettings] = useState<Record<string, string>>({
+    whatsapp_number: localStorage.getItem('wa_number') || '+521'
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch initial data
@@ -41,6 +46,18 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (galleryError) throw galleryError;
       setGallery(galleryData || []);
+
+      // Fetch Global Settings
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('settings')
+        .select('*');
+
+      if (!settingsError && settingsData) {
+        const settingsMap: Record<string, string> = {};
+        settingsData.forEach(s => settingsMap[s.key] = s.value);
+        setSettings(prev => ({ ...prev, ...settingsMap }));
+      }
+
     } catch (error) {
       console.error('Error fetching Supabase data:', error);
     } finally {
@@ -131,16 +148,31 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const updateSettings = async (key: string, value: string) => {
+    try {
+      const { error } = await supabase.from('settings').upsert({ key, value });
+      if (error) throw error;
+      setSettings(prev => ({ ...prev, [key]: value }));
+      if (key === 'whatsapp_number') localStorage.setItem('wa_number', value);
+    } catch (error: any) {
+      console.error('Error updating settings:', error);
+      // Fail silently or alert? Alert for the user.
+      alert(`Error al guardar configuración: ${error.message}. Asegúrese de haber creado la tabla 'settings' en Supabase.`);
+    }
+  };
+
   return (
     <ProductContext.Provider value={{
       products,
       gallery,
+      settings,
       addProduct,
       updateProduct,
       removeProduct,
       addToGallery,
       removeFromGallery,
       updateGalleryItem,
+      updateSettings,
       isLoading
     }}>
       {children}

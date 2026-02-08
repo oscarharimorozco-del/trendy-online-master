@@ -1,17 +1,26 @@
 
 import React from 'react';
 import { useCart } from '../context/CartContext';
+import { useProducts } from '../context/ProductContext';
 
 export const Cart: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
     const { cart, removeFromCart, updateQuantity, cartTotal, clearCart } = useCart();
+    const { settings } = useProducts();
 
     const handleCheckout = () => {
-        const waNumber = localStorage.getItem('wa_number') || '+521';
+        const rawWa = settings.whatsapp_number || localStorage.getItem('wa_number') || '+521';
+
+        // Si el usuario puso un link completo (wa.me o wa.link), lo usamos tal cual
+        const isFullLink = rawWa.includes('wa.me') || rawWa.includes('wa.link');
+        const waUrl = isFullLink ?
+            (rawWa.startsWith('http') ? rawWa : `https://${rawWa}`) :
+            `https://wa.me/${rawWa.replace('+', '').replace(/\s/g, '')}`;
+
         const message = `¡Hola! Me interesa comprar los siguientes productos de Gihart & Hersel:\n\n` +
             cart.map(item => `- ${item.name} (${item.selectedSize}) x${item.quantity}: $${item.price * item.quantity}`).join('\n') +
             `\n\n*Total: $${cartTotal}*`;
 
-        window.open(`https://wa.me/${waNumber.replace('+', '')}?text=${encodeURIComponent(message)}`, '_blank');
+        window.open(`${waUrl}${waUrl.includes('?') ? '&' : '?'}text=${encodeURIComponent(message)}`, '_blank');
     };
 
     if (!isOpen) return null;
