@@ -3,6 +3,7 @@ import { CategoryType, GenderType, SocialConfig } from '../types';
 import { useProducts } from '../context/ProductContext';
 import { AdminAgent } from '../components/AdminAgent';
 import { supabase } from '../services/supabase';
+import { QRCodeCanvas } from 'qrcode.react';
 
 interface PendingFile {
   id: string; src: string; name: string; target: 'shop' | 'gallery';
@@ -290,6 +291,36 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         </div>
 
         <div className="lg:col-span-4 space-y-10">
+          <section className="bg-white/5 p-10 rounded-[3rem] space-y-6 border border-white/10 flex flex-col items-center">
+            <h3 className="text-xl font-black italic self-start underline decoration-cyan-400">QR para <span className="text-cyan-400">Clientes</span></h3>
+            <div className="bg-white p-6 rounded-[2rem] shadow-2xl">
+              <QRCodeCanvas value={window.location.origin} size={180} bgColor="#ffffff" fgColor="#000000" level="H" includeMargin={false} />
+            </div>
+            <p className="text-[9px] text-gray-500 font-black uppercase text-center leading-relaxed">Este QR lleva a la <br />página principal de la tienda.</p>
+            <button
+              onClick={() => {
+                const canvas = document.querySelector('canvas');
+                if (canvas) {
+                  const link = document.createElement('a');
+                  link.download = 'qr-clientes-trendy.png';
+                  link.href = canvas.toDataURL();
+                  link.click();
+                }
+              }}
+              className="w-full py-3 bg-cyan-500/10 text-cyan-400 rounded-xl text-[8px] font-black uppercase hover:bg-cyan-500 hover:text-white transition-all"
+            >
+              Descargar Imagen
+            </button>
+          </section>
+
+          <section className="bg-white/5 p-10 rounded-[3rem] space-y-6 border border-white/10 flex flex-col items-center">
+            <h3 className="text-xl font-black italic self-start underline decoration-pink-500">Acceso <span className="text-pink-500">Móvil ADM</span></h3>
+            <div className="bg-white p-6 rounded-[2rem] shadow-2xl">
+              <QRCodeCanvas value={window.location.href} size={180} bgColor="#ffffff" fgColor="#000000" level="H" includeMargin={false} />
+            </div>
+            <p className="text-[9px] text-gray-500 font-black uppercase text-center leading-relaxed">Úselo para administrar <br />desde su celular.</p>
+          </section>
+
           <AdminAgent />
           <section className="bg-white/5 p-10 rounded-[3rem] space-y-6 border border-white/10">
             <h3 className="text-xl font-black italic">Sales <span className="text-pink-500">Social</span></h3>
