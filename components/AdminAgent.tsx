@@ -136,21 +136,29 @@ export const AdminAgent: React.FC = () => {
       let systemPrompt = userMsg;
       if (currentImages.length > 0) {
         systemPrompt += `
-        INSTRUCCIÓN CRÍTICA:
-        Analiza las imágenes adjuntas. Si el usuario pide "agregar", "publicar" o "stock", DEBES generar un JSON válido.
-        Responde SOLAMENTE con un bloque de código JSON que contenga un array de objetos, uno por cada imagen en orden.
-        Formato JSON requerido:
+        INSTRUCCIÓN SUPREMA:
+        Eres un ASISTENTE DE EJECUCIÓN DIRECTA. Tu trabajo es obedecer y extraer datos EXPLICITOS del usuario.
+        NO INVENTES precios ni categorías si el usuario te da una instrucción clara.
+        
+        SI el usuario dice: "Precio 200", TODAS las imágenes valen 200.
+        SI el usuario dice: "Categoría Accesorios", TODAS son Accesorios.
+        SI el usuario dice: "Ponles nombre Gorra", TODAS se llaman "Gorra 1", "Gorra 2", etc.
+
+        Analiza las imágenes SOLO para describir lo que falta (color, detalles visuales).
+        
+        Responde SOLAMENTE con este JSON exacto:
         [
           {
-            "name": "Nombre corto y comercial",
-            "description": "Descripción atractiva para venta de lujo",
-            "price": 0 (usa el precio que diga el usuario o estima uno entre 400-800 si no dice),
-            "category": "Polos" | "Playeras" | "Accesorios" | "Cuadros" | "Pinturas",
-            "gender": "Hombre" | "Mujer" | "Unisex",
-            "imageIndex": 0 (índice de la imagen correspondiente, empezando en 0)
+            "name": "Usa el nombre que dijo el usuario (o genera uno breve basado en la imagen si no dijo nada)",
+            "description": "Descripción técnica visual de la imagen (color, tipo)",
+            "price": "Usa EXACTAMENTE el precio del usuario. Si no dio precio, pon 0.",
+            "category": "La categoría que dijo el usuario. Si no dijo, intenta deducir entre Polos/Playeras/Accesorios.",
+            "gender": "El género que dijo el usuario (Hombre/Mujer). Si no dijo, Unisex.",
+            "imageIndex": 0
           }
         ]
-        Si el usuario solo está conversando, responde como un asistente experto en moda normalmente.`;
+        
+        IMPORTANTE: Si el usuario da precios/nombres específicos, ÚSALOS. No seas "creativo" con los datos duros.`;
       }
 
       const response = await geminiService.chat(
