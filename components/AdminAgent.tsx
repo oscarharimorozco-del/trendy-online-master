@@ -1,17 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { geminiService } from '../services/geminiService';
+import { supabase } from '../services/supabase';
 import { useProducts } from '../context/ProductContext';
+import { CategoryType, GenderType } from '../types';
+
+interface AutoProductDraft {
+  name: string;
+  description: string;
+  price: number;
+  category: CategoryType;
+  gender: GenderType;
+  imageIndex: number;
+}
 
 export const AdminAgent: React.FC = () => {
-  const [messages, setMessages] = useState<{ role: string, text: string, images?: string[] }[]>([]);
+  const [messages, setMessages] = useState<{ role: string, text: string, images?: string[], drafts?: AutoProductDraft[] }[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const { products } = useProducts();
+  const { products, addProduct } = useProducts();
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -47,6 +59,64 @@ export const AdminAgent: React.FC = () => {
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  const uploadImageToSupabase = async (base64Image: string): Promise<string | null> => {
+    try {
+      const fileExt = base64Image.split(';')[0].split('/')[1];
+      const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${fileExt}`;
+      const filePath = `shop/${fileName}`;
+      const base64Data = base64Image.split(',')[1];
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: base64Image.split(';')[0].split(':')[1] });
+
+      const { error } = await supabase.storage.from('imagenes').upload(filePath, blob);
+      if (error) throw error;
+
+      const { data } = supabase.storage.from('imagenes').getPublicUrl(filePath);
+      return data.publicUrl;
+    } catch (e) {
+      console.error("Upload error:", e);
+      return null;
+    }
+  };
+
+  const publishDrafts = async (drafts: AutoProductDraft[], images: string[]) => {
+    setIsPublishing(true);
+    let successCount = 0;
+
+    try {
+      for (const draft of drafts) {
+        if (draft.imageIndex >= images.length) continue;
+
+        const imageUrl = await uploadImageToSupabase(images[draft.imageIndex]);
+        if (!imageUrl) continue;
+
+        await addProduct({
+          name: draft.name,
+          description: draft.description,
+          price: draft.price,
+          wholesalePrice: Math.round(draft.price * 0.8), // Auto wholesale calculation
+          promoPrice: draft.price,
+          category: draft.category,
+          gender: draft.gender,
+          image: imageUrl,
+          sizes: ['S', 'M', 'L', 'XL'],
+          isPromotion: false,
+        });
+        successCount++;
+      }
+      setMessages(prev => [...prev, { role: 'model', text: `✅ ¡Listo! Se publicaron ${successCount} productos exitosamente. Ya están en la tienda.` }]);
+      speak(`Proceso completado. ${successCount} productos han sido publicados.`);
+    } catch (e: any) {
+      setMessages(prev => [...prev, { role: 'model', text: `❌ Hubo un error al publicar: ${e.message}` }]);
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const handleSend = async (customMsg?: string) => {
     const userMsg = customMsg || input;
     if (!userMsg.trim() && selectedImages.length === 0) return;
@@ -55,15 +125,74 @@ export const AdminAgent: React.FC = () => {
     const currentImages = [...selectedImages];
     setInput('');
     setSelectedImages([]);
+
+    // Optimistic UI update
     setMessages(prev => [...prev, { role: 'user', text: userMsg || "(Imágenes)", images: currentImages.length > 0 ? currentImages : undefined }]);
     setIsLoading(true);
 
     try {
       const ctx = products.map(p => `${p.name}`).join(', ');
-      const response = await geminiService.chat(messages, userMsg || "Orden sobre imágenes", ctx, 'admin', currentImages.length > 0 ? currentImages : undefined);
+
+      let systemPrompt = userMsg;
+      if (currentImages.length > 0) {
+        systemPrompt += `
+        INSTRUCCIÓN CRÍTICA:
+        Analiza las imágenes adjuntas. Si el usuario pide "agregar", "publicar" o "stock", DEBES generar un JSON válido.
+        Responde SOLAMENTE con un bloque de código JSON que contenga un array de objetos, uno por cada imagen en orden.
+        Formato JSON requerido:
+        [
+          {
+            "name": "Nombre corto y comercial",
+            "description": "Descripción atractiva para venta de lujo",
+            "price": 0 (usa el precio que diga el usuario o estima uno entre 400-800 si no dice),
+            "category": "Polos" | "Playeras" | "Accesorios" | "Cuadros" | "Pinturas",
+            "gender": "Hombre" | "Mujer" | "Unisex",
+            "imageIndex": 0 (índice de la imagen correspondiente, empezando en 0)
+          }
+        ]
+        Si el usuario solo está conversando, responde como un asistente experto en moda normalmente.`;
+      }
+
+      const response = await geminiService.chat(
+        messages.map(m => ({ role: m.role, text: m.text, images: m.images })), // Filter out drafts from history for API
+        systemPrompt || "Orden sobre imágenes",
+        ctx,
+        'admin',
+        currentImages.length > 0 ? currentImages : undefined
+      );
+
       const reply = response.text;
-      setMessages(prev => [...prev, { role: 'model', text: reply }]);
-      await speak(reply);
+
+      // Check for JSON response
+      const jsonMatch = reply.match(/```json\n([\s\S]*?)\n```/) || reply.match(/\[\s*\{[\s\S]*\}\s*\]/);
+
+      if (jsonMatch) {
+        try {
+          const jsonStr = jsonMatch[1] || jsonMatch[0];
+          const drafts: AutoProductDraft[] = JSON.parse(jsonStr);
+
+          if (Array.isArray(drafts) && drafts.length > 0) {
+            setMessages(prev => [...prev, {
+              role: 'model',
+              text: `He preparado ${drafts.length} productos basados en tus imágenes. Revisa abajo y confirma para publicar.`,
+              drafts: drafts,
+              images: currentImages // Store original images with the message to map indexes
+            }]);
+            speak(`He generado ${drafts.length} borradores. Por favor revisa y confirma la publicación.`);
+          } else {
+            setMessages(prev => [...prev, { role: 'model', text: reply }]);
+            speak(reply);
+          }
+        } catch (e) {
+          console.error("JSON Parse Error", e);
+          setMessages(prev => [...prev, { role: 'model', text: reply }]);
+          speak(reply);
+        }
+      } else {
+        setMessages(prev => [...prev, { role: 'model', text: reply }]);
+        await speak(reply);
+      }
+
     } catch (e: any) {
       setMessages(prev => [...prev, { role: 'model', text: `Error: ${e.message}` }]);
     } finally { setIsLoading(false); }
@@ -88,7 +217,7 @@ export const AdminAgent: React.FC = () => {
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`p-4 rounded-[2rem] text-[10px] leading-relaxed max-w-[85%] ${m.role === 'user' ? 'bg-cyan-600 shadow-lg shadow-cyan-600/20' : 'bg-white/5 border border-white/5 text-gray-300'}`}>
-              {m.images && (
+              {m.images && !m.drafts && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {m.images.map((img, idx) => (
                     <img key={idx} src={img} className="w-20 h-20 object-cover rounded-xl border border-white/10" />
@@ -96,6 +225,30 @@ export const AdminAgent: React.FC = () => {
                 </div>
               )}
               {m.text}
+
+              {/* Drafts Review UI */}
+              {m.drafts && m.images && (
+                <div className="mt-4 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto custom-scrollbar p-2 bg-black/20 rounded-xl">
+                    {m.drafts.map((draft, idx) => (
+                      <div key={idx} className="bg-white/5 p-3 rounded-xl border border-white/5 flex gap-3">
+                        <img src={m.images![draft.imageIndex]} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="font-black text-cyan-400 uppercase truncate">{draft.name}</p>
+                          <p className="text-[9px] text-gray-500">${draft.price} | {draft.category}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => publishDrafts(m.drafts!, m.images!)}
+                    disabled={isPublishing}
+                    className="w-full py-3 bg-cyan-500 text-white rounded-xl font-black uppercase tracking-widest hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isPublishing ? 'Publicando...' : `🚀 Confirmar y Publicar (${m.drafts.length})`}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}
