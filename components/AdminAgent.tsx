@@ -8,8 +8,12 @@ interface AutoProductDraft {
   name: string;
   description: string;
   price: number;
+  wholesalePrice: number;
+  promoPrice: number;
   category: CategoryType;
   gender: GenderType;
+  sizes: string[];
+  isPromotion: boolean;
   imageIndex: number;
 }
 
@@ -98,13 +102,13 @@ export const AdminAgent: React.FC = () => {
           name: draft.name,
           description: draft.description,
           price: draft.price,
-          wholesalePrice: Math.round(draft.price * 0.8), // Auto wholesale calculation
-          promoPrice: draft.price,
+          wholesalePrice: draft.wholesalePrice || Math.round(draft.price * 0.8),
+          promoPrice: draft.promoPrice || draft.price,
           category: draft.category,
           gender: draft.gender,
           image: imageUrl,
-          sizes: ['S', 'M', 'L', 'XL'],
-          isPromotion: false,
+          sizes: draft.sizes && draft.sizes.length > 0 ? draft.sizes : ['S', 'M', 'L', 'XL'],
+          isPromotion: draft.isPromotion || false,
         });
         successCount++;
       }
@@ -141,24 +145,31 @@ export const AdminAgent: React.FC = () => {
         NO INVENTES precios ni categorías si el usuario te da una instrucción clara.
         
         SI el usuario dice: "Precio 200", TODAS las imágenes valen 200.
+        SI el usuario dice: "Mayoreo 150", TODAS tienen precio mayoreo 150.
         SI el usuario dice: "Categoría Accesorios", TODAS son Accesorios.
-        SI el usuario dice: "Ponles nombre Gorra", TODAS se llaman "Gorra 1", "Gorra 2", etc.
+        SI el usuario dice: "Tallas Chica y Mediana", SOLO usa tallas S y M.
+        SI el usuario dice: "Promo" o "Oferta", ACTIVA isPromotion.
+        SI el usuario da un Nombre, ÚSALO. Si no, GENERA uno corto y comercial basado en lo que ves (NUNCA uses el nombre del archivo original).
 
-        Analiza las imágenes SOLO para describir lo que falta (color, detalles visuales).
+        Analiza las imágenes SOLO para describir lo que falta (color, detalles visuales) o poner nombre si no te dieron uno.
         
         Responde SOLAMENTE con este JSON exacto:
         [
           {
-            "name": "Usa el nombre que dijo el usuario (o genera uno breve basado en la imagen si no dijo nada)",
-            "description": "Descripción técnica visual de la imagen (color, tipo)",
-            "price": "Usa EXACTAMENTE el precio del usuario. Si no dio precio, pon 0.",
-            "category": "La categoría que dijo el usuario. Si no dijo, intenta deducir entre Polos/Playeras/Accesorios.",
-            "gender": "El género que dijo el usuario (Hombre/Mujer). Si no dijo, Unisex.",
+            "name": "Nombre exacto del usuario OR Generado (Ej: Polo Negra Lujo)",
+            "description": "Descripción técnica visual",
+            "price": 0,
+            "wholesalePrice": 0 (Si usuario no dio, calcula 80% del precio),
+            "promoPrice": 0 (Igual al precio, a menos que usuario diga otro),
+            "category": "Polos" | "Playeras" | "Accesorios" | "Cuadros" | "Pinturas",
+            "gender": "Hombre" | "Mujer" | "Unisex",
+            "sizes": ["S", "M", "L", "XL", "2XL"] (Filtra las que pida el usuario),
+            "isPromotion": true/false,
             "imageIndex": 0
           }
         ]
         
-        IMPORTANTE: Si el usuario da precios/nombres específicos, ÚSALOS. No seas "creativo" con los datos duros.`;
+        IMPORTANTE: Obediencia ciega a los datos numéricos y de texto del usuario.`;
       }
 
       const response = await geminiService.chat(
