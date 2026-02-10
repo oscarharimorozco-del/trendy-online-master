@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
 
 export const Cart: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-    const { cart, removeFromCart, updateQuantity, cartTotal, clearCart } = useCart();
+    const { cart, removeFromCart, updateQuantity, cartTotal, isWholesale, cartCount, clearCart } = useCart();
     const { settings } = useProducts();
 
     const handleCheckout = () => {
@@ -16,9 +16,13 @@ export const Cart: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
             (rawWa.startsWith('http') ? rawWa : `https://${rawWa}`) :
             `https://wa.me/${rawWa.replace('+', '').replace(/\s/g, '')}`;
 
-        const message = `¡Hola! Me interesa comprar los siguientes productos de Gihart & Hersel:\n\n` +
-            cart.map(item => `- ${item.name} (${item.selectedSize}) x${item.quantity}: $${item.price * item.quantity}`).join('\n') +
-            `\n\n*Total: $${cartTotal}*`;
+        const message = `¡Hola! Me interesa comprar los siguientes productos de Gihart & Hersel:\n` +
+            (isWholesale ? `*🔥 PRECIO MAYOREO APLICADO 🔥*\n\n` : `\n`) +
+            cart.map(item => {
+                const effectivePrice = isWholesale && item.wholesalePrice ? item.wholesalePrice : item.price;
+                return `- ${item.name} (${item.selectedSize}) x${item.quantity}: $${effectivePrice * item.quantity}`;
+            }).join('\n') +
+            `\n\n*Total a Pagar: $${cartTotal}*`;
 
         window.open(`${waUrl}${waUrl.includes('?') ? '&' : '?'}text=${encodeURIComponent(message)}`, '_blank');
     };
@@ -33,14 +37,37 @@ export const Cart: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                 <div className="w-screen max-w-md animate-slide-left">
                     <div className="h-full flex flex-col bg-[#080808] shadow-2xl border-l border-white/5 selection:bg-pink-500">
                         {/* Header */}
-                        <div className="p-6 border-b border-white/5 flex items-center justify-between bg-black/40">
-                            <div className="flex items-center gap-3">
-                                <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" />
-                                <h2 className="text-xl font-black uppercase italic tracking-tighter">Tu <span className="text-pink-500">Carrito</span></h2>
+                        {/* Header con Estado de Mayoreo */}
+                        <div className="p-6 border-b border-white/5 flex flex-col bg-black/40 gap-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" />
+                                    <h2 className="text-xl font-black uppercase italic tracking-tighter">Tu <span className="text-pink-500">Carrito</span></h2>
+                                </div>
+                                <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth="2" /></svg>
+                                </button>
                             </div>
-                            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth="2" /></svg>
-                            </button>
+
+                            {/* Barra de Progreso Mayoreo */}
+                            {cart.length > 0 && (
+                                <div className={`p-4 rounded-2xl border ${isWholesale ? 'bg-cyan-500/10 border-cyan-500 text-cyan-400' : 'bg-white/5 border-white/10 text-gray-400'}`}>
+                                    {isWholesale ? (
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-center animate-pulse">✨ ¡Precio de Mayoreo Activado! ✨</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-[9px] font-bold uppercase">
+                                                <span>Progreso para Mayoreo</span>
+                                                <span>{cartCount} / 6 pzas</span>
+                                            </div>
+                                            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                                                <div className="h-full bg-pink-500 transition-all duration-500" style={{ width: `${Math.min((cartCount / 6) * 100, 100)}%` }}></div>
+                                            </div>
+                                            <p className="text-[8px] text-center opacity-60">Agrega {Math.max(0, 6 - cartCount)} piezas más para desbloquear precios especiales</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Cart Items */}
@@ -75,7 +102,16 @@ export const Cart: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                                                     <span className="px-2 text-[10px] font-bold">{item.quantity}</span>
                                                     <button onClick={() => updateQuantity(item.id, item.selectedSize, item.quantity + 1)} className="px-3 py-1 hover:text-pink-500">+</button>
                                                 </div>
-                                                <p className="font-black text-pink-500 text-sm">${item.price * item.quantity}</p>
+                                                <div className="text-right">
+                                                    {isWholesale && item.wholesalePrice ? (
+                                                        <>
+                                                            <p className="font-black text-cyan-400 text-sm">${item.wholesalePrice * item.quantity}</p>
+                                                            <p className="text-[8px] text-gray-500 line-through">${item.price * item.quantity}</p>
+                                                        </>
+                                                    ) : (
+                                                        <p className="font-black text-pink-500 text-sm">${item.price * item.quantity}</p>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

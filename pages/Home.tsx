@@ -45,7 +45,7 @@ const Home: React.FC = () => {
         <div className="relative z-10 max-w-4xl mx-4 md:mx-8 lg:ml-16 space-y-8 md:space-y-12">
           <div className="animate-float">
             <span className="accent-gradient text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.4em] shadow-2xl">
-              Nivel Maestro 2025 <span className="opacity-50 ml-2">| BUILD 2.5 - READY</span>
+              Nivel Maestro 2025 <span className="opacity-50 ml-2">| EDICIÓN LIMITADA - LISTO</span>
             </span>
           </div>
           <h1 className="text-5xl sm:text-7xl lg:text-9xl font-black tracking-tighter leading-[0.8] drop-shadow-2xl">
@@ -53,7 +53,7 @@ const Home: React.FC = () => {
             <span className="text-gradient">LEGADO.</span>
           </h1>
           <p className="text-2xl text-gray-300 max-w-xl font-light leading-relaxed">
-            La curaduría perfecta para el hombre que no busca destacar, sino ser recordado.
+            La selección perfecta para el hombre que no busca destacar, sino imponer. Estilo y autoridad en cada prenda.
           </p>
           {/* Featured Grid (Promociones con Destello) */}
           {(() => {
@@ -129,8 +129,8 @@ const Home: React.FC = () => {
       <section>
         <div className="flex justify-between items-end mb-20">
           <div className="space-y-2">
-            <h2 className="text-6xl font-black tracking-tighter uppercase italic">Master <span className="text-gradient">Gallery Highlights</span></h2>
-            <p className="text-gray-500 text-lg uppercase font-bold tracking-widest">Momentos Maestros. Curaduría Exclusiva.</p>
+            <h2 className="text-6xl font-black tracking-tighter uppercase italic">Galería <span className="text-gradient">Maestra</span></h2>
+            <p className="text-gray-500 text-lg uppercase font-bold tracking-widest">Lo mejor del estilo. Selección Exclusiva.</p>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
@@ -165,7 +165,7 @@ const Home: React.FC = () => {
                   </div>
                 </div>
                 <h3 className="text-3xl font-black tracking-tighter">{item.name}</h3>
-                <p className="text-gray-600 font-black text-[10px] uppercase tracking-widest mt-1">Visión Trendy</p>
+                <p className="text-gray-600 font-black text-[10px] uppercase tracking-widest mt-1">Estilo Trendy</p>
               </div>
             ));
           })()}
