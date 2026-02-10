@@ -162,6 +162,18 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                       <div className="space-y-6">
                         <div className="grid grid-cols-3 gap-2">
                           <div className="space-y-2">
+                            <p className="text-[7px] font-black uppercase text-gray-600 tracking-tighter ml-2">Categoría</p>
+                            <select
+                              value={f.category}
+                              onChange={e => updatePending(f.id, { category: e.target.value as CategoryType })}
+                              className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs font-black text-white outline-none focus:border-pink-500 appearance-none"
+                            >
+                              {['Polos', 'Playeras', 'Accesorios', 'Cuadros', 'Pinturas'].map(c => (
+                                <option key={c} value={c} className="bg-black text-white">{c}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-2">
                             <p className="text-[7px] font-black uppercase text-gray-600 tracking-tighter ml-2">Público</p>
                             <input type="number" value={f.price} onChange={e => updatePending(f.id, { price: Number(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-black text-pink-500 text-center outline-none focus:border-pink-500" />
                           </div>
