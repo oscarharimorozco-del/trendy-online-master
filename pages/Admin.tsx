@@ -19,6 +19,26 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  const handleAgentDrafts = (drafts: any[], images: string[]) => {
+    const newPendingFiles = drafts.map((d, i) => ({
+      id: Math.random().toString(36).substr(2, 9),
+      src: images[d.imageIndex],
+      name: d.name,
+      target: 'shop' as const,
+      price: d.price,
+      wholesalePrice: d.wholesalePrice,
+      promoPrice: d.promoPrice,
+      category: d.category,
+      gender: d.gender,
+      sizes: d.sizes || ['S', 'M', 'L', 'XL'],
+      description: d.description,
+      isPromotion: d.isPromotion,
+      isFeatured: false
+    }));
+    setPendingFiles(prev => [...prev, ...newPendingFiles]);
+    alert(`Se agregaron ${newPendingFiles.length} borradores para revisión manual.`);
+  };
+
   const sizeOptions = ['S', 'M', 'L', 'XL', '2XL'];
 
   const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -328,7 +348,7 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             <p className="text-[9px] text-gray-500 font-black uppercase text-center leading-relaxed">Úselo para administrar <br />desde su celular.</p>
           </section>
 
-          <AdminAgent />
+          <AdminAgent onDraftsGenerated={handleAgentDrafts} />
           <section className="bg-white/5 p-10 rounded-[3rem] space-y-6 border border-white/10">
             <h3 className="text-xl font-black italic">Sales <span className="text-pink-500">Social</span></h3>
             <div className="space-y-4">

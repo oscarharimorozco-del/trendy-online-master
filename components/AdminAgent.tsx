@@ -17,7 +17,11 @@ interface AutoProductDraft {
   imageIndex: number;
 }
 
-export const AdminAgent: React.FC = () => {
+interface AdminAgentProps {
+  onDraftsGenerated?: (drafts: AutoProductDraft[], images: string[]) => void;
+}
+
+export const AdminAgent: React.FC<AdminAgentProps> = ({ onDraftsGenerated }) => {
   const [messages, setMessages] = useState<{ role: string, text: string, images?: string[], drafts?: AutoProductDraft[] }[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -260,11 +264,15 @@ export const AdminAgent: React.FC = () => {
                     ))}
                   </div>
                   <button
-                    onClick={() => publishDrafts(m.drafts!, m.images!)}
-                    disabled={isPublishing}
-                    className="w-full py-3 bg-cyan-500 text-white rounded-xl font-black uppercase tracking-widest hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      if (onDraftsGenerated) {
+                        onDraftsGenerated(m.drafts!, m.images!);
+                        setMessages(prev => [...prev, { role: 'model', text: '✅ Borradores enviados a la zona de edición manual.' }]);
+                      }
+                    }}
+                    className="w-full py-3 bg-cyan-500 text-white rounded-xl font-black uppercase tracking-widest hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20"
                   >
-                    {isPublishing ? 'Publicando...' : `🚀 Confirmar y Publicar (${m.drafts.length})`}
+                    📝 Enviar a Revisión Manual ({m.drafts.length})
                   </button>
                 </div>
               )}
