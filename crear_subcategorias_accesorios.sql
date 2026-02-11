@@ -2,9 +2,12 @@
 -- SCRIPT PARA CREAR SUBCATEGORÍAS DE ACCESORIOS
 -- ============================================
 
+-- 0. Habilitar extensión para UUIDs (IMPORTANTE)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- 1. Crear tabla 'subcategories' para manejar subcategorías
 CREATE TABLE IF NOT EXISTS public.subcategories (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   category TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

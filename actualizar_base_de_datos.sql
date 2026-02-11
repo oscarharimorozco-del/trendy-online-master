@@ -2,6 +2,9 @@
 -- COPIA Y PEGA ESTO EN EL EDITOR SQL DE SUPABASE
 -- ============================================
 
+-- 0. Habilitar extensión para UUIDs (IMPORTANTE)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- 1. Actualizar tabla 'gallery' para soportar imágenes destacadas (Presentación)
 ALTER TABLE public.gallery 
 ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT false;
@@ -15,7 +18,7 @@ ADD COLUMN IF NOT EXISTS is_sold_out BOOLEAN DEFAULT false;
 
 -- 3. Crear tabla 'subcategories' para manejar subcategorías de productos
 CREATE TABLE IF NOT EXISTS public.subcategories (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   category TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
