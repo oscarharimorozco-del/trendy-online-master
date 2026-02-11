@@ -92,7 +92,8 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
         wholesale_price: product.wholesalePrice,
         promo_price: product.promoPrice,
         is_promotion: product.isPromotion,
-        is_sold_out: product.isSoldOut
+        is_sold_out: product.isSoldOut,
+        subcategory: product.subcategory || null
       };
 
       // Remove camelCase properties to avoid "Column not found" errors

@@ -15,6 +15,7 @@ export enum ImageSize {
 
 export type CategoryType = 'Polos' | 'Playeras' | 'Accesorios' | 'Cuadros' | 'Pinturas' | 'Videos';
 export type GenderType = 'Hombre' | 'Mujer' | 'Unisex';
+export type SubcategoryType = 'Cintos' | 'Bandoleras' | 'Calcetines' | 'Gorras' | 'Varios';
 
 export interface Product {
   id: string;
@@ -29,6 +30,8 @@ export interface Product {
   isPromotion?: boolean;
   isSoldOut?: boolean;
   promoPrice?: number;
+  subcategory?: string;
+  subcategory_id?: string;
 }
 
 export interface GalleryItem {

@@ -13,20 +13,23 @@ const Shop: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('Todo');
   const [activeGender, setActiveGender] = useState<string>(initialGender);
   const [activeSize, setActiveSize] = useState<string | null>(null);
+  const [activeSubcategory, setActiveSubcategory] = useState<string | null>(null);
   const [selectedSizes, setSelectedSizes] = useState<Record<string, string>>({});
 
   const categories = ['Todo', 'Polos', 'Playeras', 'Accesorios', 'Cuadros', 'Pinturas', 'Videos'];
   const genders = ['Todo', 'Hombre', 'Mujer', 'Unisex'];
   const sizes = ['S', 'M', 'L', 'XL', '2XL'];
+  const subcategories = ['Cintos', 'Bandoleras', 'Calcetines', 'Gorras', 'Varios'];
 
   const filtered = useMemo(() => {
     return products.filter(p => {
       const matchCat = activeCategory === 'Todo' ? true : p.category === activeCategory;
       const matchGender = activeGender === 'Todo' ? true : p.gender === activeGender;
-      if (['Accesorios', 'Cuadros', 'Pinturas', 'Videos'].includes(activeCategory)) return matchCat;
+      const matchSubcat = !activeSubcategory || p.subcategory === activeSubcategory;
+      if (['Accesorios', 'Cuadros', 'Pinturas', 'Videos'].includes(activeCategory)) return matchCat && matchSubcat;
       return matchCat && matchGender && (!activeSize || p.sizes?.includes(activeSize));
     });
-  }, [products, activeCategory, activeGender, activeSize]);
+  }, [products, activeCategory, activeGender, activeSize, activeSubcategory]);
 
   const handleAddToCart = (product: Product) => {
     const size = selectedSizes[product.id] || (product.sizes?.[0]) || 'N/A';
@@ -70,6 +73,7 @@ const Shop: React.FC = () => {
                 key={cat}
                 onClick={() => {
                   setActiveCategory(cat);
+                  setActiveSubcategory(null);
                   if (['Accesorios', 'Cuadros', 'Pinturas', 'Videos'].includes(cat) || cat === 'Todo') setActiveSize(null);
                   else if (!activeSize) setActiveSize('M');
                 }}
@@ -83,7 +87,7 @@ const Shop: React.FC = () => {
       </header>
 
       <div className="flex flex-col xl:flex-row gap-12">
-        {/* FILTROS LATERALES */}
+        {/* FILTROS LATERALES - Tallas */}
         {(!['Accesorios', 'Cuadros', 'Pinturas', 'Videos'].includes(activeCategory)) && activeCategory !== 'Todo' && (
           <aside className="xl:w-72 space-y-8 shrink-0">
             <div className="glass p-8 rounded-[3.5rem] border-white/10 sticky top-28 bg-white/[0.02]">
@@ -96,6 +100,32 @@ const Shop: React.FC = () => {
                     className={`py-4 rounded-2xl text-[10px] font-black border transition-all ${activeSize === s ? 'accent-gradient border-transparent text-white shadow-lg shadow-pink-500/20' : 'bg-white/5 border-white/5 text-gray-500 hover:text-white'}`}
                   >
                     {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
+        )}
+
+        {/* FILTROS LATERALES - Subcategorías de Accesorios */}
+        {activeCategory === 'Accesorios' && (
+          <aside className="xl:w-72 space-y-8 shrink-0">
+            <div className="glass p-8 rounded-[3.5rem] border-white/10 sticky top-28 bg-white/[0.02]">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400 mb-6 text-center">Tipo de Accesorio</h3>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setActiveSubcategory(null)}
+                  className={`w-full py-4 rounded-2xl text-[10px] font-black border transition-all ${!activeSubcategory ? 'bg-cyan-500 border-transparent text-white shadow-lg shadow-cyan-500/20' : 'bg-white/5 border-white/5 text-gray-500 hover:text-white'}`}
+                >
+                  Todos
+                </button>
+                {subcategories.map(sc => (
+                  <button
+                    key={sc}
+                    onClick={() => setActiveSubcategory(sc)}
+                    className={`w-full py-4 rounded-2xl text-[10px] font-black border transition-all ${activeSubcategory === sc ? 'bg-cyan-500 border-transparent text-white shadow-lg shadow-cyan-500/20' : 'bg-white/5 border-white/5 text-gray-500 hover:text-white'}`}
+                  >
+                    {sc}
                   </button>
                 ))}
               </div>

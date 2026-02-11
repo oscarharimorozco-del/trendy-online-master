@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { CategoryType, GenderType, SocialConfig } from '../types';
+import { CategoryType, GenderType, SubcategoryType, SocialConfig } from '../types';
 import { useProducts } from '../context/ProductContext';
 import { AdminAgent } from '../components/AdminAgent';
 import { supabase } from '../services/supabase';
@@ -11,6 +11,7 @@ interface PendingFile {
   gender: GenderType; sizes: string[]; description: string;
   isPromotion: boolean;
   isFeatured: boolean;
+  subcategory?: string;
 }
 
 const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
@@ -185,7 +186,7 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                             <p className="text-[7px] font-black uppercase text-gray-600 tracking-tighter ml-2">Categoría</p>
                             <select
                               value={f.category}
-                              onChange={e => updatePending(f.id, { category: e.target.value as CategoryType })}
+                              onChange={e => updatePending(f.id, { category: e.target.value as CategoryType, subcategory: undefined })}
                               className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs font-black text-white outline-none focus:border-pink-500 appearance-none"
                             >
                               {['Polos', 'Playeras', 'Accesorios', 'Cuadros', 'Pinturas'].map(c => (
@@ -206,6 +207,24 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                             <input type="number" value={f.promoPrice} onChange={e => updatePending(f.id, { promoPrice: Number(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-black text-yellow-500 text-center outline-none focus:border-yellow-500" />
                           </div>
                         </div>
+
+                        {/* Selector de Subcategoría para Accesorios */}
+                        {f.category === 'Accesorios' && (
+                          <div className="space-y-2">
+                            <p className="text-[7px] font-black uppercase text-cyan-400 tracking-tighter ml-2">Subcategoría de Accesorio</p>
+                            <select
+                              value={f.subcategory || ''}
+                              onChange={e => updatePending(f.id, { subcategory: e.target.value })}
+                              className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs font-black text-cyan-400 outline-none focus:border-cyan-500 appearance-none"
+                            >
+                              <option value="" className="bg-black text-white">Seleccionar...</option>
+                              {(['Cintos', 'Bandoleras', 'Calcetines', 'Gorras', 'Varios'] as const).map(sc => (
+                                <option key={sc} value={sc} className="bg-black text-white">{sc}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
                         <button
                           onClick={() => updatePending(f.id, { isPromotion: !f.isPromotion })}
                           className={`w-full py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all ${f.isPromotion ? 'bg-yellow-500 border-transparent text-black shadow-lg shadow-yellow-500/30' : 'bg-white/5 border-white/10 text-gray-500 hover:text-yellow-500'}`}
@@ -247,74 +266,104 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-10 border-t border-white/5">
-            <div className="bg-white/5 p-8 rounded-[3rem] space-y-6">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-pink-500 text-center">Stock en Tienda</h3>
-              <div className="space-y-3">
-                {products.map(p => (
-                  <div key={p.id} className={`flex flex-col gap-4 bg-black/40 p-5 rounded-[2rem] border transition-all ${p.isPromotion ? 'border-yellow-500/30' : 'border-white/5'} ${p.isSoldOut ? 'opacity-60' : ''}`}>
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <img src={p.image} className="w-16 h-16 rounded-2xl object-cover" />
-                        {p.isPromotion && <span className="absolute -top-2 -right-2 text-xs bg-yellow-500 rounded-full p-1 leading-none shadow-lg">⚡</span>}
-                        {p.isSoldOut && <span className="absolute -top-2 -left-2 text-xs bg-red-500 rounded-full p-1 leading-none shadow-lg">🚫</span>}
+        </div>
+
+        {/* Full Width Dashboard Sections */}
+        <div className="col-span-1 lg:col-span-12 space-y-12 pt-10 border-t border-white/5">
+
+          {/* Stock Dashboard */}
+          <div className="bg-white/5 p-8 rounded-[3rem] space-y-8">
+            <div className="flex justify-between items-end">
+              <div>
+                <h3 className="text-xl font-black uppercase tracking-[0.3em] text-pink-500">Stock Global</h3>
+                <p className="text-[10px] text-gray-500 font-bold mt-2">Total de piezas: {products.length}</p>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-[8px] bg-white/5 px-3 py-1 rounded-full text-gray-400">Vista de Cuadrícula</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {products.map(p => (
+                <div key={p.id} className={`group relative bg-black/40 rounded-[2rem] border transition-all hover:scale-[1.02] hover:shadow-2xl hover:border-pink-500/50 flex flex-col overflow-hidden ${p.isPromotion ? 'border-yellow-500/30 shadow-yellow-500/10' : 'border-white/5'} ${p.isSoldOut ? 'opacity-60 grayscale' : ''}`}>
+
+                  {/* Image Area */}
+                  <div className="aspect-[3/4] w-full relative">
+                    <img src={p.image} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-60"></div>
+
+                    {/* Top Badges */}
+                    <div className="absolute top-3 left-3 flex flex-col gap-1">
+                      {p.isPromotion && <span className="text-[8px] bg-yellow-500 text-black px-2 py-1 rounded-md font-black shadow-lg">⚡ PROMO</span>}
+                      {p.isSoldOut && <span className="text-[8px] bg-red-500 text-white px-2 py-1 rounded-md font-black shadow-lg">🚫 AGOTADO</span>}
+                    </div>
+
+                    {/* Delete Button */}
+                    <button
+                      onClick={async (e) => { e.stopPropagation(); if (confirm("¿Borrar permanentemente?")) { try { await removeProduct(p.id); } catch (e: any) { alert(e.message); } } }}
+                      className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full hover:bg-red-500 transition-colors backdrop-blur-md opacity-0 group-hover:opacity-100"
+                    >✕</button>
+
+                    {/* Quick Info Overlay */}
+                    <div className="absolute bottom-3 left-3 right-3">
+                      <p className="text-[10px] font-black uppercase text-white truncate drop-shadow-md">{p.name}</p>
+                      <p className="text-[8px] text-gray-300 font-bold mt-0.5">{p.category} | {p.gender}</p>
+                    </div>
+                  </div>
+
+                  {/* Pricing & Actions */}
+                  <div className="p-4 space-y-3 bg-white/[0.02]">
+                    <div className="flex justify-between items-center bg-black/30 p-2 rounded-xl border border-white/5">
+                      <div className="text-center flex-1 border-r border-white/10">
+                        <p className="text-[7px] text-gray-500 uppercase">Público</p>
+                        <p className="text-xs font-black text-pink-500">${p.price}</p>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-black uppercase truncate">{p.name}</p>
-                        <p className="text-[9px] text-gray-500 font-bold tracking-widest">{p.gender} | {p.category}</p>
-                        <div className="flex gap-2 mt-1">
-                          <p className="text-[10px] text-pink-500 font-black">${p.price}</p>
-                          <p className="text-[10px] text-cyan-400 font-black">M: ${p.wholesalePrice}</p>
-                        </div>
+                      <div className="text-center flex-1">
+                        <p className="text-[7px] text-gray-500 uppercase">Mayoreo</p>
+                        <p className="text-xs font-black text-cyan-400">${p.wholesalePrice}</p>
                       </div>
-                      <button onClick={async () => { if (confirm("¿Borrar permanentemente?")) { try { await removeProduct(p.id); } catch (e: any) { alert(e.message); } } }} className="p-3 text-red-500/40 hover:text-red-500 transition-colors">✕</button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="col-span-2 flex flex-col gap-2 bg-black/20 p-3 rounded-2xl border border-white/5">
-                        <p className="text-[7px] font-black uppercase text-gray-500 ml-1">Precio Promoción</p>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            value={p.promoPrice || 0}
-                            onChange={e => updateProduct(p.id, { promoPrice: Number(e.target.value) })}
-                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black text-yellow-500 outline-none focus:border-yellow-500"
-                          />
-                          <button
-                            onClick={async () => { try { await updateProduct(p.id, { isPromotion: !p.isPromotion }); } catch (e: any) { alert(e.message); } }}
-                            className={`px-4 rounded-xl text-[8px] font-black uppercase border transition-all ${p.isPromotion ? 'bg-yellow-500 border-transparent text-black shadow-lg' : 'bg-white/5 border-white/10 text-gray-500'}`}
-                          >
-                            {p.isPromotion ? '⚡ ACTIVO' : 'ACTIVAR'}
-                          </button>
-                        </div>
-                      </div>
+                      <button
+                        onClick={async () => { try { await updateProduct(p.id, { isPromotion: !p.isPromotion }); } catch (e: any) { alert(e.message); } }}
+                        className={`py-2 rounded-lg text-[7px] font-black uppercase border transition-all ${p.isPromotion ? 'bg-yellow-500 text-black border-transparent' : 'bg-white/5 text-gray-500 border-white/5 hover:bg-white/10'}`}
+                      >
+                        {p.isPromotion ? 'En Promo' : 'Promocionar'}
+                      </button>
                       <button
                         onClick={async () => { try { await updateProduct(p.id, { isSoldOut: !p.isSoldOut }); } catch (e: any) { alert(e.message); } }}
-                        className={`py-2 rounded-xl text-[8px] font-black uppercase border transition-all ${p.isSoldOut ? 'bg-red-500 border-transparent text-white shadow-lg' : 'bg-white/5 border-white/10 text-gray-500'}`}
+                        className={`py-2 rounded-lg text-[7px] font-black uppercase border transition-all ${p.isSoldOut ? 'bg-red-500 text-white border-transparent' : 'bg-white/5 text-gray-500 border-white/5 hover:bg-white/10'}`}
                       >
-                        {p.isSoldOut ? '🚫 Agotado' : 'Disponible'}
+                        {p.isSoldOut ? 'Vender' : 'Agotar'}
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-white/5 p-8 rounded-[3rem] space-y-6">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400 text-center">Panel de Galería</h3>
-              <div className="grid grid-cols-4 gap-2">
-                {gallery.map(item => (
-                  <div key={item.id} className={`aspect-square rounded-xl overflow-hidden relative group border transition-all ${item.isFeatured ? 'border-purple-500 ring-2 ring-purple-500/30' : 'border-white/5'}`}>
-                    <img src={item.url} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-2 p-1">
-                      <button onClick={async () => { try { await removeFromGallery(item.id); } catch (e: any) { alert(e.message); } }} className="bg-red-600 text-[6px] font-black px-2 py-1 rounded w-full">BORRAR</button>
-                      <button onClick={async () => { try { await updateGalleryItem(item.id, { isFeatured: !item.isFeatured }); } catch (e: any) { alert(e.message); } }} className="bg-purple-600 text-[6px] font-black px-2 py-1 rounded w-full">{item.isFeatured ? 'NO DESTACAR' : 'DESTACAR'}</button>
-                    </div>
-                    {item.isFeatured && <span className="absolute top-1 right-1 text-[8px] drop-shadow-lg">⭐</span>}
-                  </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
+
+          {/* Gallery Dashboard */}
+          <div className="bg-white/5 p-8 rounded-[3rem] space-y-6">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400 text-center">Panel de Galería ({gallery.length})</h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
+              {gallery.map(item => (
+                <div key={item.id} className={`aspect-square rounded-2xl overflow-hidden relative group border transition-all hover:scale-105 hover:z-10 shadow-xl ${item.isFeatured ? 'border-purple-500 ring-2 ring-purple-500/30' : 'border-white/5'}`}>
+                  <img src={item.url} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-2 p-2 transition-opacity duration-300">
+                    <p className="text-[8px] text-white font-black truncate w-full text-center px-1">{item.name}</p>
+                    <div className="flex gap-1 w-full">
+                      <button onClick={async () => { try { await removeFromGallery(item.id); } catch (e: any) { alert(e.message); } }} className="flex-1 bg-red-600/80 hover:bg-red-600 text-white text-[8px] font-black rounded py-1">X</button>
+                      <button onClick={async () => { try { await updateGalleryItem(item.id, { isFeatured: !item.isFeatured }); } catch (e: any) { alert(e.message); } }} className="flex-1 bg-purple-600/80 hover:bg-purple-600 text-white text-[8px] font-black rounded py-1">★</button>
+                    </div>
+                  </div>
+                  {item.isFeatured && <span className="absolute top-1 right-1 text-[10px] drop-shadow-lg filter drop-shadow-black">⭐</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
 
         <div className="lg:col-span-4 space-y-10">
