@@ -18,9 +18,13 @@ let latestQR = "";
 const app = express();
 const port = process.env.PORT || 8000;
 
-app.get('/', (req, res) => res.send('WhatsApp Bot is Alive! 🚀 <br><a href="/qr">Ver QR de WhatsApp</a>'));
+app.get('/', (req, res) => {
+    console.log('👀 Petición recibida en / (root)');
+    res.send('WhatsApp Bot is Alive! 🚀 <br><a href="/qr">Ver QR de WhatsApp</a>');
+});
 
 app.get('/qr', async (req, res) => {
+    console.log('👀 Petición recibida en /qr');
     if (!latestQR) {
         return res.send('<h1>Aún no se ha generado el código QR</h1><p>Espera unos segundos y recarga...</p><script>setTimeout(() => location.reload(), 3000)</script>');
     }
@@ -35,11 +39,14 @@ app.get('/qr', async (req, res) => {
             </div>
         `);
     } catch (e) {
+        console.error('❌ Error generando QR:', e);
         res.status(500).send('Error generando QR');
     }
 });
 
-app.listen(port, () => console.log(`📡 Health-check listening on port ${port}`));
+app.listen(port, '0.0.0.0', () => {
+    console.log(`📡 Server listening on port ${port} (0.0.0.0)`);
+});
 
 // ==========================================
 // 1. CONFIGURACIÓN DE SERVICIOS
@@ -218,13 +225,21 @@ const client = new Client({
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
+            '--shm-size=1gb',      // Aumentar memoria compartida
+            '--disable-gpu',
             '--no-zygote',
-            '--single-process', // <- Ayuda en ambientes con poca RAM
-            '--disable-gpu'
+            '--no-first-run'
         ]
     }
+});
+
+client.on('auth_failure', msg => {
+    console.error('❌ ERROR DE AUTENTICACIÓN:', msg);
+});
+
+client.on('disconnected', (reason) => {
+    console.log('⚠️ El cliente se desconectó:', reason);
+    // Intentar reinicializar si es necesario
 });
 
 client.on('qr', (qr) => {
