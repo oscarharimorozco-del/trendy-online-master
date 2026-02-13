@@ -1,26 +1,41 @@
 import { AspectRatio, ImageSize } from "../types";
 
-// Gestión inteligente de múltiples llaves de API
-const getApiKeys = (): string[] => {
+// Gestión inteligente de múltiples llaves de API (Gemini y Groq)
+const getApiKeys = () => {
+  const allKeys = (import.meta.env.VITE_GEMINI_API_KEY as string || "").split(',').map(k => k.trim()).filter(Boolean);
   const localKeys = localStorage.getItem('custom_gemini_keys');
   if (localKeys) {
     try {
       const parsed = JSON.parse(localKeys);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) allKeys.push(...parsed);
     } catch {
-      return [localKeys.trim()];
+      allKeys.push(localKeys.trim());
     }
   }
-  return [(import.meta.env.VITE_GEMINI_API_KEY as string)?.trim() || ""];
+
+  return {
+    groq: allKeys.filter(k => k.startsWith('gsk_')),
+    gemini: allKeys.filter(k => k.startsWith('AIza'))
+  };
 };
 
-const storeInstruction = "Eres el Curador Maestro de Gihart & Hersel. Tono sofisticado. Ayuda al cliente y cierra en WhatsApp.";
-const adminInstruction = "Eres el Director de Estrategia. Sé breve, ejecutivo y directo. No saludes con textos largos. Puedes analizar varias imágenes a la vez si el usuario las sube. Úsalas para cumplir la orden del usuario (comparar, describir, crear anuncios, etc.) de forma inmediata.";
+const storeInstruction = `Eres el Curador Maestro de Gihart & Hersel. 
+Tono sofisticado, elegante pero cercano. 
+REGLAS DE PRECIOS:
+1. NUNCA inventes precios. Usa solo los que aparecen en el CATALOGO.
+2. PRECIO PÚBLICO: Es el precio base.
+3. PRECIO MAYOREO: Aplica únicamente a partir de 6 piezas.
+4. NUNCA ofrezcas paquetes como "12 por $250". Los precios son POR UNIDAD.
+Si no estás seguro de un precio, invita al cliente a concretar en WhatsApp para una cotización formal.
+Manten las respuestas breves, con negritas y emojis sutiles.`;
+
+const adminInstruction = "Eres el Director de Estrategia. Sé breve, ejecutivo y directo. No saludes con textos largos.";
 
 let cachedModel: string | null = null;
 
 export const geminiService = {
   discoverBestModel: async (apiKey: string) => {
+    if (apiKey.startsWith('gsk_')) return 'llama-3.3-70b-versatile';
     if (cachedModel) return cachedModel;
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
@@ -36,99 +51,123 @@ export const geminiService = {
     return 'models/gemini-1.5-flash';
   },
 
-  // Función de reintento inteligente
-  request: async (fn: (key: string) => Promise<any>): Promise<any> => {
+  chat: async (history: any[], message: string, productsContext: string, mode: 'store' | 'admin' = 'store', imagesBase64?: string[]) => {
     const keys = getApiKeys();
     let lastError: any = null;
 
-    for (const key of keys) {
+    // 1. Intentar con GROQ primero (Si hay llaves)
+    for (const key of keys.groq) {
       try {
-        if (!key) continue;
-        return await fn(key);
-      } catch (error: any) {
-        lastError = error;
-        if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('403') || error.message?.includes('API_KEY_INVALID')) {
-          console.warn("Llave agotada o inválida, probando la siguiente...");
-          continue;
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              { role: "system", content: mode === 'admin' ? adminInstruction : storeInstruction + "\n\nCONTEXTO:\n" + productsContext },
+              ...history.map(h => ({ role: h.role === 'user' ? 'user' : 'assistant', content: h.text })),
+              { role: "user", content: message }
+            ]
+          })
+        });
+        const data = await response.json();
+        if (data.choices?.[0]?.message?.content) {
+          return { text: data.choices[0].message.content };
         }
-        throw error;
+      } catch (e) {
+        console.warn("Groq falló en web, probando siguiente...");
+        lastError = e;
       }
     }
-    throw lastError || new Error("Todas las llaves de API están agotadas.");
-  },
 
-  chat: async (history: any[], message: string, productsContext: string, mode: 'store' | 'admin' = 'store', imagesBase64?: string[]) => {
-    return geminiService.request(async (apiKey) => {
-      const modelPath = await geminiService.discoverBestModel(apiKey);
-      const url = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateContent?key=${apiKey}`;
+    // 2. Fallback a GEMINI
+    for (const key of keys.gemini) {
+      try {
+        const modelPath = await geminiService.discoverBestModel(key);
+        const url = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateContent?key=${key}`;
+        const fullInstruction = mode === 'admin' ? adminInstruction : storeInstruction;
+        const prompt = `INSTRUCCIONES: ${fullInstruction}\n\nCONTEXTO: ${productsContext}\n\nORDEN: ${message}`;
+        const parts: any[] = [{ text: prompt }];
 
-      const fullInstruction = mode === 'admin' ? adminInstruction : storeInstruction;
-      const prompt = `INSTRUCCIONES: ${fullInstruction}\n\nCONTEXTO: ${productsContext}\n\nORDEN: ${message}`;
-      const parts: any[] = [{ text: prompt }];
+        if (imagesBase64 && imagesBase64.length > 0) {
+          imagesBase64.forEach(img => {
+            const mimeType = img.match(/:(.*?);/)?.[1] || "image/png";
+            const data = img.split(',')[1];
+            parts.push({ inline_data: { mime_type: mimeType, data: data } });
+          });
+        }
 
-      if (imagesBase64 && imagesBase64.length > 0) {
-        imagesBase64.forEach(img => {
-          const mimeType = img.match(/:(.*?);/)?.[1] || "image/png";
-          const data = img.split(',')[1];
-          parts.push({ inline_data: { mime_type: mimeType, data: data } });
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts }] })
         });
+
+        const data = await response.json();
+        if (data.error) continue;
+        return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "Sin respuesta." };
+      } catch (e) {
+        lastError = e;
+        continue;
       }
+    }
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts }] })
-      });
-
-      const data = await response.json();
-      if (data.error) throw new Error(`${data.error.code}: ${data.error.message}`);
-      return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "Sin respuesta." };
-    });
+    throw lastError || new Error("No hay llaves de IA disponibles.");
   },
 
   generateVoiceResponse: async (text: string) => {
-    return geminiService.request(async (apiKey) => {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `Responsable de tienda: ${text}` }] }],
-          generationConfig: { responseModalities: ["AUDIO"] }
-        })
-      });
-      const data = await response.json();
-      if (data.error) throw new Error(data.error.message);
-      return data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    }).catch(() => null);
+    const keys = getApiKeys().gemini;
+    for (const key of keys) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `Responsable de tienda: ${text}` }] }],
+            generationConfig: { responseModalities: ["AUDIO"] }
+          })
+        });
+        const data = await response.json();
+        if (data.error) continue;
+        return data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      } catch (e) { continue; }
+    }
+    return null;
   },
 
   generateImage: async (prompt: string, aspectRatio: AspectRatio, imageSize: ImageSize) => {
-    console.log("Generando:", prompt, aspectRatio, imageSize);
-    throw new Error("El motor 'Imagen' requiere una llave de API con facturación activa en Google Cloud.");
+    throw new Error("El motor 'Imagen' requiere una llave de API con facturación activa.");
   },
 
   editImage: async (sourceImageBase64: string, prompt: string) => {
-    return geminiService.request(async (apiKey) => {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-      const mimeType = sourceImageBase64.match(/:(.*?);/)?.[1] || "image/png";
-      const data = sourceImageBase64.split(',')[1];
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inline_data: { mime_type: mimeType, data: data } },
-              { text: `Edita esta imagen siguiendo esta orden: ${prompt}` }
-            ]
-          }]
-        })
-      });
-      const resData = await response.json();
-      if (resData.error) throw new Error(resData.error.message);
-      return resData.candidates?.[0]?.content?.parts?.[0]?.text;
-    });
+    const keys = getApiKeys().gemini;
+    for (const key of keys) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+        const mimeType = sourceImageBase64.match(/:(.*?);/)?.[1] || "image/png";
+        const data = sourceImageBase64.split(',')[1];
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { inline_data: { mime_type: mimeType, data: data } },
+                { text: `Edita esta imagen siguiendo esta orden: ${prompt}` }
+              ]
+            }]
+          })
+        });
+        const resData = await response.json();
+        if (resData.error) continue;
+        return resData.candidates?.[0]?.content?.parts?.[0]?.text;
+      } catch (e) { continue; }
+    }
+    return null;
   },
 
   getQuickSuggestion: async (topic: string) => {

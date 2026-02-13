@@ -16,14 +16,14 @@ async function testUpload() {
             console.error('❌ Error al listar buckets:', bError.message);
         } else {
             console.log('✅ Buckets:', buckets.map(b => b.name).join(', '));
-            if (!buckets.find(b => b.name === 'images')) {
-                console.error('❌ NO EXISTE EL BUCKET "images". Créalo en Supabase -> Storage.');
+            if (!buckets.find(b => b.name === 'imagenes')) {
+                console.error('❌ NO EXISTE EL BUCKET "imagenes". Créalo en Supabase -> Storage.');
             }
         }
 
         // 2. Intentar subida
         const dummy = new Blob(['test'], { type: 'text/plain' });
-        const { data, error } = await supabase.storage.from('images').upload(`test-${Date.now()}.txt`, dummy);
+        const { data, error } = await supabase.storage.from('imagenes').upload(`test-${Date.now()}.txt`, dummy);
 
         if (error) {
             console.error('❌ ERROR DE SUBIDA:', error.message);

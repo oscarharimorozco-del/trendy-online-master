@@ -42,26 +42,33 @@ ON CONFLICT DO NOTHING;
 ALTER TABLE public.subcategories ENABLE ROW LEVEL SECURITY;
 
 -- 7. Crear políticas para permitir acceso público a subcategorías
-CREATE POLICY IF NOT EXISTS "Enable read access for all users" ON "public"."subcategories"
+-- Primero eliminamos políticas existentes si las hay
+DROP POLICY IF EXISTS "Enable read access for all users" ON "public"."subcategories";
+DROP POLICY IF EXISTS "Enable insert access for all users" ON "public"."subcategories";
+DROP POLICY IF EXISTS "Enable update access for all users" ON "public"."subcategories";
+DROP POLICY IF EXISTS "Enable delete access for all users" ON "public"."subcategories";
+
+-- Crear nuevas políticas
+CREATE POLICY "Enable read access for all users" ON "public"."subcategories"
 AS PERMISSIVE 
 FOR SELECT
 TO public
 USING (true);
 
-CREATE POLICY IF NOT EXISTS "Enable insert access for all users" ON "public"."subcategories"
+CREATE POLICY "Enable insert access for all users" ON "public"."subcategories"
 AS PERMISSIVE 
 FOR INSERT
 TO public
 WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "Enable update access for all users" ON "public"."subcategories"
+CREATE POLICY "Enable update access for all users" ON "public"."subcategories"
 AS PERMISSIVE 
 FOR UPDATE
 TO public
 USING (true)
 WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "Enable delete access for all users" ON "public"."subcategories"
+CREATE POLICY "Enable delete access for all users" ON "public"."subcategories"
 AS PERMISSIVE 
 FOR DELETE
 TO public

@@ -13,7 +13,7 @@ export enum ImageSize {
   K4 = '4K'
 }
 
-export type CategoryType = 'Polos' | 'Playeras' | 'Accesorios' | 'Cuadros' | 'Pinturas' | 'Videos';
+export type CategoryType = 'Polos' | 'Playeras' | '3XL Edition' | 'Accesorios' | 'Cuadros' | 'Pinturas' | 'Videos';
 export type GenderType = 'Hombre' | 'Mujer' | 'Unisex';
 export type SubcategoryType = 'Cintos' | 'Bandoleras' | 'Calcetines' | 'Gorras' | 'Varios';
 

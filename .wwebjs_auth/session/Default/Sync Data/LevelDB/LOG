@@ -1,0 +1,4 @@
+2026/02/11-05:36:28.288 34a0 Creating DB C:\Users\oosca\OneDrive\Escritorio\trendy-online-master-edition\.wwebjs_auth\session\Default\Sync Data\LevelDB since it was missing.
+2026/02/11-05:36:29.780 34a0 Reusing MANIFEST C:\Users\oosca\OneDrive\Escritorio\trendy-online-master-edition\.wwebjs_auth\session\Default\Sync Data\LevelDB/MANIFEST-000001
+2026/02/11-05:36:29.782 34a0 Recovering log #3
+2026/02/11-05:36:29.784 34a0 Reusing old log C:\Users\oosca\OneDrive\Escritorio\trendy-online-master-edition\.wwebjs_auth\session\Default\Sync Data\LevelDB/000003.log 

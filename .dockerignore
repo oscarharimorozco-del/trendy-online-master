@@ -1,0 +1,9 @@
+node_modules
+.git
+.env
+.DS_Store
+dist
+facebook_session
+.wwebjs_auth
+.wwebjs_cache
+*.log

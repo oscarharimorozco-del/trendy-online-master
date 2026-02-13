@@ -1,0 +1,5 @@
+2026/02/12-02:57:40.324 e18 Creating DB C:\Users\oosca\OneDrive\Escritorio\trendy-online-master-edition\facebook_session\Default\Local Storage\leveldb since it was missing.
+2026/02/12-02:57:40.824 e18 Reusing MANIFEST C:\Users\oosca\OneDrive\Escritorio\trendy-online-master-edition\facebook_session\Default\Local Storage\leveldb/MANIFEST-000001
+2026/02/12-14:35:11.599 e18 Level-0 table #5: started
+2026/02/12-14:35:11.766 e18 Level-0 table #5: 17405 bytes OK
+2026/02/12-14:35:11.907 e18 Delete type=0 #3

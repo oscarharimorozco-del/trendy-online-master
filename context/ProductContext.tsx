@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, GalleryItem } from '../types';
 import { supabase } from '../services/supabase';
+import { facebookFeedService } from '../services/facebookFeed';
 
 interface ProductContextType {
   products: Product[];
@@ -108,7 +109,11 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .select();
 
       if (error) throw error;
-      if (data) setProducts([mapProductFromDB(data[0]), ...products]);
+      if (data) {
+        const newProductList = [mapProductFromDB(data[0]), ...products];
+        setProducts(newProductList);
+        facebookFeedService.generateAndUpload(newProductList);
+      }
     } catch (error: any) {
       console.error('Error adding product:', error);
       throw error;
@@ -131,7 +136,9 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       const { error } = await supabase.from('products').update(dbUpdates).eq('id', id);
       if (error) throw error;
-      setProducts(products.map(p => p.id === id ? { ...p, ...updates } : p));
+      const newProductList = products.map(p => p.id === id ? { ...p, ...updates } : p);
+      setProducts(newProductList);
+      facebookFeedService.generateAndUpload(newProductList);
     } catch (error: any) {
       console.error('Error updating product:', error);
       throw error;
@@ -146,7 +153,9 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .eq('id', id);
 
       if (error) throw error;
-      setProducts(products.filter(p => p.id !== id));
+      const newProductList = products.filter(p => p.id !== id);
+      setProducts(newProductList);
+      facebookFeedService.generateAndUpload(newProductList);
     } catch (error) {
       console.error('Error removing product:', error);
     }

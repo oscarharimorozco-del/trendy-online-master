@@ -16,9 +16,9 @@ const Shop: React.FC = () => {
   const [activeSubcategory, setActiveSubcategory] = useState<string | null>(null);
   const [selectedSizes, setSelectedSizes] = useState<Record<string, string>>({});
 
-  const categories = ['Todo', 'Polos', 'Playeras', 'Accesorios', 'Cuadros', 'Pinturas', 'Videos'];
+  const categories = ['Todo', 'Polos', 'Playeras', '3XL Edition', 'Accesorios', 'Cuadros', 'Pinturas', 'Videos'];
   const genders = ['Todo', 'Hombre', 'Mujer', 'Unisex'];
-  const sizes = ['S', 'M', 'L', 'XL', '2XL'];
+  const sizes = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
   const subcategories = ['Cintos', 'Bandoleras', 'Calcetines', 'Gorras', 'Varios'];
 
   const filtered = useMemo(() => {

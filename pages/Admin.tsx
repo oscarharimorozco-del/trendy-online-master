@@ -3,6 +3,7 @@ import { CategoryType, GenderType, SubcategoryType, SocialConfig } from '../type
 import { useProducts } from '../context/ProductContext';
 import { AdminAgent } from '../components/AdminAgent';
 import { supabase } from '../services/supabase';
+import { facebookFeedService } from '../services/facebookFeed';
 import { QRCodeCanvas } from 'qrcode.react';
 
 interface PendingFile {
@@ -19,6 +20,20 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [feedUrl, setFeedUrl] = useState<string>('');
+
+  const handleSyncFacebook = async () => {
+    setIsSaving(true);
+    try {
+      const url = await facebookFeedService.generateAndUpload(products);
+      setFeedUrl(url);
+      alert('¡Sincronizado! Copia el URL para Facebook.');
+    } catch (e: any) {
+      alert('Error: ' + e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleAgentDrafts = (drafts: any[], images: string[]) => {
     const newPendingFiles = drafts.map((d, i) => ({
@@ -40,7 +55,7 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     alert(`Se agregaron ${newPendingFiles.length} borradores para revisión manual.`);
   };
 
-  const sizeOptions = ['S', 'M', 'L', 'XL', '2XL'];
+  const sizeOptions = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
 
   const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -189,7 +204,7 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                               onChange={e => updatePending(f.id, { category: e.target.value as CategoryType, subcategory: undefined })}
                               className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs font-black text-white outline-none focus:border-pink-500 appearance-none"
                             >
-                              {['Polos', 'Playeras', 'Accesorios', 'Cuadros', 'Pinturas'].map(c => (
+                              {['Polos', 'Playeras', '3XL Edition', 'Accesorios', 'Cuadros', 'Pinturas'].map(c => (
                                 <option key={c} value={c} className="bg-black text-white">{c}</option>
                               ))}
                             </select>
@@ -398,6 +413,44 @@ const Admin: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
           </section>
 
           <AdminAgent onDraftsGenerated={handleAgentDrafts} />
+
+          <section className="bg-white/5 p-10 rounded-[3rem] space-y-6 border border-white/10">
+            <h3 className="text-xl font-black italic">Inteligencia <span className="text-cyan-400">Gemini</span></h3>
+            <div className="space-y-4">
+              <p className="text-[10px] text-gray-500 font-bold uppercase ml-2">Llaves de API (Separadas por comas)</p>
+              <textarea
+                value={settings.gemini_keys || ''}
+                onChange={e => updateSettings('gemini_keys', e.target.value)}
+                rows={3}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-[10px] font-mono text-cyan-400 outline-none focus:border-cyan-500"
+                placeholder="AIzaSy..."
+              />
+              <p className="text-[8px] text-gray-600 italic">El bot de WhatsApp y el Agente de Admin usarán estas llaves en orden para evitar límites.</p>
+            </div>
+          </section>
+
+          <section className="bg-white/5 p-10 rounded-[3rem] space-y-6 border border-white/10">
+            <h3 className="text-xl font-black italic">Meta <span className="text-blue-500">Commerce</span></h3>
+            <div className="space-y-4">
+              <p className="text-[10px] text-gray-500 font-bold uppercase ml-2">Feed de Datos (Catálogo Automático)</p>
+
+              {feedUrl && (
+                <div className="bg-blue-500/10 p-4 rounded-xl border border-blue-500/30 break-all">
+                  <p className="text-[9px] text-blue-400 font-mono select-all">{feedUrl}</p>
+                </div>
+              )}
+
+              <button
+                onClick={handleSyncFacebook}
+                disabled={isSaving}
+                className="w-full py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+              >
+                {isSaving ? 'Sincronizando...' : '🔃 Forzar Sincronización y Ver Link'}
+              </button>
+              <p className="text-[8px] text-gray-600 italic">Pega este link en Commerce Manager -{'>'} Data Sources -{'>'} Data Feed.</p>
+            </div>
+          </section>
+
           <section className="bg-white/5 p-10 rounded-[3rem] space-y-6 border border-white/10">
             <h3 className="text-xl font-black italic">Sales <span className="text-pink-500">Social</span></h3>
             <div className="space-y-4">

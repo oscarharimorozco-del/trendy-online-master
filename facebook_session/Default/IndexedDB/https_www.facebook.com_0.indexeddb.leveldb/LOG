@@ -1,0 +1,45 @@
+2026/02/12-02:59:23.915 1c38 Reusing MANIFEST C:\Users\oosca\OneDrive\Escritorio\trendy-online-master-edition\facebook_session\Default\IndexedDB\https_www.facebook.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/02/12-02:59:23.923 1c38 Recovering log #3
+2026/02/12-02:59:23.929 1c38 Reusing old log C:\Users\oosca\OneDrive\Escritorio\trendy-online-master-edition\facebook_session\Default\IndexedDB\https_www.facebook.com_0.indexeddb.leveldb/000003.log 
+2026/02/12-03:12:17.852 34b4 Level-0 table #5: started
+2026/02/12-03:12:18.075 34b4 Level-0 table #5: 1325888 bytes OK
+2026/02/12-03:12:18.115 34b4 Delete type=0 #3
+2026/02/12-14:00:07.086 34b4 Level-0 table #7: started
+2026/02/12-14:00:08.284 34b4 Level-0 table #7: 1333836 bytes OK
+2026/02/12-14:00:08.482 34b4 Delete type=0 #4
+2026/02/12-14:00:18.970 34b4 Compacting 1@1 + 1@2 files
+2026/02/12-14:00:20.242 34b4 Generated table #8@1: 2671 keys, 120991 bytes
+2026/02/12-14:00:20.243 34b4 Compacted 1@1 + 1@2 files => 120991 bytes
+2026/02/12-14:00:20.303 34b4 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/02/12-14:00:20.325 34b4 Delete type=2 #5
+2026/02/12-14:00:20.325 34b4 Delete type=2 #7
+2026/02/12-14:12:59.802 34b4 Level-0 table #10: started
+2026/02/12-14:13:00.004 34b4 Level-0 table #10: 1331158 bytes OK
+2026/02/12-14:13:00.044 34b4 Delete type=0 #6
+2026/02/12-14:13:20.769 34b4 Compacting 1@1 + 1@2 files
+2026/02/12-14:13:20.811 34b4 Generated table #11@1: 2671 keys, 120995 bytes
+2026/02/12-14:13:20.811 34b4 Compacted 1@1 + 1@2 files => 120995 bytes
+2026/02/12-14:13:20.813 34b4 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/02/12-14:13:20.819 34b4 Delete type=2 #8
+2026/02/12-14:13:20.820 34b4 Delete type=2 #10
+2026/02/12-14:25:51.816 34b4 Level-0 table #13: started
+2026/02/12-14:25:51.998 34b4 Level-0 table #13: 1328334 bytes OK
+2026/02/12-14:25:52.012 34b4 Delete type=0 #9
+2026/02/12-14:26:15.766 1c38 Compacting 1@1 + 1@2 files
+2026/02/12-14:26:15.809 1c38 Generated table #14@1: 2668 keys, 119211 bytes
+2026/02/12-14:26:15.809 1c38 Compacted 1@1 + 1@2 files => 119211 bytes
+2026/02/12-14:26:15.812 1c38 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/02/12-14:26:15.817 1c38 Delete type=2 #11
+2026/02/12-14:26:15.817 1c38 Delete type=2 #13
+2026/02/12-14:35:15.834 2a0c Level-0 table #16: started
+2026/02/12-14:35:18.255 2a0c Level-0 table #16: 958868 bytes OK
+2026/02/12-14:35:18.467 2a0c Delete type=0 #12
+2026/02/12-14:35:18.468 2a0c Manual compaction at level-0 from (begin) .. (end); will stop at (end)
+2026/02/12-14:35:18.469 2a0c Manual compaction at level-1 from (begin) .. (end); will stop at '\x00\x0a\x0d"\x01!\x00a\x001\x009\x00c\x004\x005\x00b\x00e\x003\x008\x009\x00a\x00_\x001\x000\x000\x000\x001\x009\x005\x000\x005\x000\x004\x004\x007\x001\x006\x00@\x00m\x00s\x00g\x00r\x00\x03\x00\x00\x00\x00\x00\x00\xf0?' @ 53561 : 0
+2026/02/12-14:35:18.469 2a0c Compacting 1@1 + 1@2 files
+2026/02/12-14:35:18.794 2a0c Generated table #17@1: 2657 keys, 119230 bytes
+2026/02/12-14:35:18.794 2a0c Compacted 1@1 + 1@2 files => 119230 bytes
+2026/02/12-14:35:18.945 2a0c compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/02/12-14:35:18.946 2a0c Delete type=2 #14
+2026/02/12-14:35:18.946 2a0c Delete type=2 #16
+2026/02/12-14:35:18.948 34b4 Manual compaction at level-1 from '\x00\x0a\x0d"\x01!\x00a\x001\x009\x00c\x004\x005\x00b\x00e\x003\x008\x009\x00a\x00_\x001\x000\x000\x000\x001\x009\x005\x000\x005\x000\x004\x004\x007\x001\x006\x00@\x00m\x00s\x00g\x00r\x00\x03\x00\x00\x00\x00\x00\x00\xf0?' @ 53561 : 0 .. (end); will stop at (end)
