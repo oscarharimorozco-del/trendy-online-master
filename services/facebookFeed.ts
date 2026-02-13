@@ -34,17 +34,22 @@ export const facebookFeedService = {
                 const price = `${product.price} MXN`;
                 const link = `${STORE_URL}/#/shop?id=${product.id}`;
 
+                // Mapeo inteligente de categorías para Facebook
+                let googleCategory = 'Apparel & Accessories > Clothing';
+                if (product.category === 'Accesorios') googleCategory = 'Apparel & Accessories > Clothing Accessories';
+                if (product.category === 'Cuadros' || product.category === 'Pinturas') googleCategory = 'Arts & Entertainment > Hobbies & Creative Arts > Artwork';
+
                 return [
                     clean(product.id),
                     clean(product.name),
-                    clean(product.description || product.name),
+                    clean(`${product.description || product.name} | Tallas: ${product.sizes.join(', ')}`),
                     availability,
                     'new',
                     price,
                     link,
                     product.image,
                     'Gihart & Hersel',
-                    'Apparel & Accessories > Clothing'
+                    googleCategory
                 ].join(',');
             });
 

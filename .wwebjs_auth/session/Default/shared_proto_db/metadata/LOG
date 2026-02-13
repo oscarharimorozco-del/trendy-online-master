@@ -1,4 +1,0 @@
-2026/02/11-05:14:15.513 2410 Creating DB C:\Users\oosca\OneDrive\Escritorio\trendy-online-master-edition\.wwebjs_auth\session\Default\shared_proto_db\metadata since it was missing.
-2026/02/11-05:14:15.584 2410 Reusing MANIFEST C:\Users\oosca\OneDrive\Escritorio\trendy-online-master-edition\.wwebjs_auth\session\Default\shared_proto_db\metadata/MANIFEST-000001
-2026/02/11-05:14:15.586 2410 Recovering log #3
-2026/02/11-05:14:15.589 2410 Reusing old log C:\Users\oosca\OneDrive\Escritorio\trendy-online-master-edition\.wwebjs_auth\session\Default\shared_proto_db\metadata/000003.log 
