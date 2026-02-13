@@ -1,4 +1,4 @@
-# Usar una imagen de Node con soporte para Puppeteer
+# Usar una imagen de Node con soporte para Puppeteer - Build V2
 FROM ghcr.io/puppeteer/puppeteer:latest
 
 # Cambiar al usuario root para instalar dependencias si es necesario

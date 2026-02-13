@@ -215,11 +215,11 @@ async function saveMutedChats() {
 }
 
 
-console.log("🚀 Iniciando Curador Maestro en WhatsApp...");
+console.log(`🚀 [${new Date().toISOString()}] Iniciando Curador Maestro v2...`);
 
 const client = new Client({
     authStrategy: new LocalAuth({
-        clientId: "bot-trendy"
+        clientId: "bot-trendy-v2"
     }),
     puppeteer: {
         headless: true,
