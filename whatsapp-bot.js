@@ -16,7 +16,7 @@ let latestQR = "";
 
 // Tiny server for Health Checks & QR Display
 const app = express();
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 8000;
 
 console.log(`🌍 Intentando iniciar servidor en puerto ${port}...`);
 
