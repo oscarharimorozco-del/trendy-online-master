@@ -7,7 +7,15 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
 
+import express from 'express';
+
 dotenv.config();
+
+// Tiny server for Health Checks (Required by Koyeb/Railway)
+const app = express();
+const port = process.env.PORT || 8000;
+app.get('/', (req, res) => res.send('WhatsApp Bot is Alive! 🚀'));
+app.listen(port, () => console.log(`📡 Health-check listening on port ${port}`));
 
 // ==========================================
 // 1. CONFIGURACIÓN DE SERVICIOS
