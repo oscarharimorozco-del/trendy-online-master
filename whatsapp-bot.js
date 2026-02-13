@@ -8,13 +8,37 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
 
 import express from 'express';
+import QRCodeNode from 'qrcode';
 
 dotenv.config();
 
-// Tiny server for Health Checks (Required by Koyeb/Railway)
+let latestQR = "";
+
+// Tiny server for Health Checks & QR Display
 const app = express();
 const port = process.env.PORT || 8000;
-app.get('/', (req, res) => res.send('WhatsApp Bot is Alive! 🚀'));
+
+app.get('/', (req, res) => res.send('WhatsApp Bot is Alive! 🚀 <br><a href="/qr">Ver QR de WhatsApp</a>'));
+
+app.get('/qr', async (req, res) => {
+    if (!latestQR) {
+        return res.send('<h1>Aún no se ha generado el código QR</h1><p>Espera unos segundos y recarga...</p><script>setTimeout(() => location.reload(), 3000)</script>');
+    }
+    try {
+        const qrImage = await QRCodeNode.toDataURL(latestQR);
+        res.send(`
+            <div style="text-align:center; padding: 50px; font-family: sans-serif;">
+                <h1>Escanea con WhatsApp</h1>
+                <img src="${qrImage}" style="width: 300px; border: 10px solid white; box-shadow: 0 0 20px rgba(0,0,0,0.1);" />
+                <p>Si ya escaneaste, el bot se conectará pronto.</p>
+                <script>setTimeout(() => location.reload(), 10000)</script>
+            </div>
+        `);
+    } catch (e) {
+        res.status(500).send('Error generando QR');
+    }
+});
+
 app.listen(port, () => console.log(`📡 Health-check listening on port ${port}`));
 
 // ==========================================
@@ -204,14 +228,14 @@ const client = new Client({
 });
 
 client.on('qr', (qr) => {
+    latestQR = qr; // Guardamos el código para mostrarlo en la web
     console.log('---------------------------------------------------------');
     console.log('📢 ESCANEA ESTE QR PARA ACTIVAR EL BOT:');
     qrcode.generate(qr, { small: true });
     console.log('💡 TIP DE ESCANEO:');
     console.log('1. Baja el zoom de tu navegador (Ctrl y -) hasta que el QR sea pequeño.');
-    console.log('2. Asegúrate de que el brillo de la pantalla no sea excesivo.');
-    console.log('3. Si no puedes leerlo, copia este código y pégalo en una web de QR:');
-    console.log(`Cadenas QR: ${qr}`);
+    console.log('2. O mejor aún, abre este link en tu navegador:');
+    console.log(`🔗 https://TU-APP-KOYEB.koyeb.app/qr (usa tu URL de Koyeb)`);
     console.log('---------------------------------------------------------');
 });
 
