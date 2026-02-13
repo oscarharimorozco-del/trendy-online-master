@@ -205,8 +205,13 @@ const client = new Client({
 
 client.on('qr', (qr) => {
     console.log('---------------------------------------------------------');
-    console.log('ESCANEA ESTE QR PARA ACTIVAR EL BOT:');
+    console.log('📢 ESCANEA ESTE QR PARA ACTIVAR EL BOT:');
     qrcode.generate(qr, { small: true });
+    console.log('💡 TIP DE ESCANEO:');
+    console.log('1. Baja el zoom de tu navegador (Ctrl y -) hasta que el QR sea pequeño.');
+    console.log('2. Asegúrate de que el brillo de la pantalla no sea excesivo.');
+    console.log('3. Si no puedes leerlo, copia este código y pégalo en una web de QR:');
+    console.log(`Cadenas QR: ${qr}`);
     console.log('---------------------------------------------------------');
 });
 
