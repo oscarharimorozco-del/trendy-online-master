@@ -19,7 +19,7 @@
     "express": "^4.18.2",
     "groq-sdk": "^0.37.0",
     "node-fetch": "^3.3.2",
-    "puppeteer": "^23.0.0",
+    "puppeteer": "latest",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "qrcode": "^1.5.4",
@@ -31,7 +31,6 @@
     "whatsapp-web.js": "^1.34.6"
   },
   "devDependencies": {
-    "@google/genai": "^1.39.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
