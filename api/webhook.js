@@ -1,5 +1,5 @@
-
 import { createClient } from '@supabase/supabase-js';
+import fetch from 'node-fetch';
 
 // Vercel doesn't always have fetch in all node versions, but Node 18+ does.
 // If it fails, it's usually because process.env is missing or the IA is crashing.

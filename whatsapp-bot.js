@@ -13,52 +13,86 @@ import fetch from 'node-fetch';
 
 dotenv.config();
 
-// --- 1. SERVIDOR EXPRESS (INICIO RÁPIDO PARA KOYEB) ---
+// --- 1. CONFIGURACIÓN DEL SERVIDOR (ARRANQUE INMEDIATO) ---
 const app = express();
 app.use(bodyParser.json());
-
-// Koyeb suele usar 8080 o el que indique la variable PORT.
+// Puerto 8080 es el estándar de Koyeb para evitar el 404
 const port = process.env.PORT || 8080;
 
 app.listen(port, '0.0.0.0', () => {
-    console.log(`📡 Servidor de Salud iniciado en puerto ${port}`);
+    console.log(`📡 Servidor Multi-Bot activo en puerto ${port}`);
 });
 
 app.get('/', (req, res) => {
-    res.status(200).send('<h1>Bot Activo 🚀</h1><p>Gihart & Hersel: WhatsApp cargando...</p><a href="/qr">Ver QR</a>');
+    res.status(200).send('<h1>Status: Online 🚀</h1><p>Gihart & Hersel: WhatsApp & Messenger vinculados.</p><a href="/qr">Ver QR WhatsApp</a>');
 });
 
 let latestQR = "";
 app.get('/qr', async (req, res) => {
-    if (!latestQR) return res.send('<h1>Generando QR...</h1><p>Recarga en 5 segundos.</p><script>setTimeout(()=>location.reload(), 5000)</script>');
+    if (!latestQR) return res.send('<h1>Generando QR...</h1><script>setTimeout(()=>location.reload(), 5000)</script>');
     try {
         const qrImage = await QRCodeNode.toDataURL(latestQR);
         res.send(`
-            <div style="text-align:center; padding:50px; font-family:sans-serif; background:#000; color:#fff; min-height:100vh;">
-                <h1>Vincular WhatsApp</h1>
+            <div style="text-align:center; padding:50px; font-family:sans-serif; background:#111; color:#fff; min-height:100vh;">
+                <h1>Escanea con WhatsApp</h1>
                 <img src="${qrImage}" style="width:300px; border:10px solid #fff; border-radius:20px;" />
-                <p>Escanea este código para activar el bot.</p>
                 <script>setTimeout(()=>location.reload(), 10000)</script>
             </div>
         `);
     } catch (e) { res.status(500).send('Error QR'); }
 });
 
-// --- 2. CONFIGURACIÓN DE IA Y DATOS ---
+// --- 2. LOGICA MESSENGER (INTEGRADA PARA KOYEB) ---
+const VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN;
+const PAGE_ACCESS_TOKEN = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+
+app.get('/webhook', (req, res) => {
+    if (req.query['hub.verify_token'] === VERIFY_TOKEN) return res.send(req.query['hub.challenge']);
+    res.sendStatus(403);
+});
+
+app.post('/webhook', async (req, res) => {
+    if (req.body.object === 'page') {
+        for (const entry of req.body.entry) {
+            const event = entry.messaging?.[0];
+            if (event?.message?.text) {
+                console.log(`📩 Messenger: ${event.message.text}`);
+                const products = await getProducts();
+                const context = formatContext(products);
+                const reply = await askAI(event.message.text, context);
+                await sendMessenger(event.sender.id, reply);
+            }
+        }
+        res.status(200).send('EVENT_RECEIVED');
+    }
+});
+
+async function sendMessenger(psid, text) {
+    try {
+        await fetch(`https://graph.facebook.com/v12.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, {
+            method: 'POST',
+            body: JSON.stringify({ recipient: { id: psid }, message: { text } }),
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (e) { console.error('Error Messenger:', e); }
+}
+
+// --- 3. IA Y DATOS (CEREBRO ÚNICO) ---
 const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
 
-const storeInstruction = `Eres el Curador Maestro de Gihart & Hersel (TIENDA FÍSICA).
-TONO: Sofisticado, elegante.
-
-REGLAS DE ORO:
-1. NO HACEMOS ENVÍOS: Siempre di que la entrega es personal o en punto de venta.
-2. PRECIOS: Mayoreo (6+ piezas). Respeta los precios del catálogo.
+const MASTER_INSTRUCTION = `Eres el Curador Maestro de Gihart & Hersel (TIENDA FÍSICA).
+REGLAS:
+1. NO HACEMOS ENVÍOS: Siempre di que la entrega es personal o en punto físico.
+2. PRECIOS: Público (1 pza), Mayoreo (6+ pzas). Respeta el catálogo.
 3. NO INVENTES MODELOS.
+TONO: Elegante y breve.`;
 
-ESTILO: Breve y elegante. Usa negritas.`;
+function formatContext(products) {
+    return products.map(p => `- ${p.name.toUpperCase()} ($${p.price} | Mayoreo: $${p.wholesale_price || 'Consultar'})`).join('\n');
+}
 
 async function getProducts() {
-    const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase.from('products').select('*');
     return data || [];
 }
 
@@ -76,44 +110,38 @@ async function askAI(message, context) {
         try {
             const groq = new Groq({ apiKey: key });
             const completion = await groq.chat.completions.create({
-                messages: [{ role: 'system', content: storeInstruction + "\nContexto:\n" + context }, { role: 'user', content: message }],
+                messages: [{ role: 'system', content: MASTER_INSTRUCTION + "\nContexto:\n" + context }, { role: 'user', content: message }],
                 model: "llama-3.3-70b-versatile"
             });
             return completion.choices[0].message.content;
         } catch (e) { }
     }
-
     for (const key of geminiKeys) {
         try {
             const genAI = new GoogleGenerativeAI(key);
             const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
-            const result = await model.generateContent(`Instrucción: ${storeInstruction}\nContexto: ${context}\nMensaje: ${message}`);
+            const result = await model.generateContent(`${MASTER_INSTRUCTION}\nContexto: ${context}\nMensaje: ${message}`);
             return result.response.text();
         } catch (e) { }
     }
-    return "Hola! Un asesor humano te atenderá pronto.";
+    return "Hola! Un asesor le contactará pronto.";
 }
 
-// --- 3. INICIO DEL CLIENTE WHATSAPP ---
+// --- 4. WHATSAPP ---
 const client = new Client({
-    authStrategy: new LocalAuth({ clientId: "bot-gihart-final" }),
+    authStrategy: new LocalAuth({ clientId: "bot-gihart-v3" }),
     puppeteer: {
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--shm-size=1gb']
     }
 });
 
-client.on('qr', (qr) => {
+client.on('qr', qr => {
     latestQR = qr;
     qrcode.generate(qr, { small: true });
-    if (process.env.WHATSAPP_NUMBER_LINK) {
-        client.requestPairingCode(process.env.WHATSAPP_NUMBER_LINK)
-            .then(code => console.log(`👉 CÓDIGO PARA VINCULAR: ${code}`))
-            .catch(e => console.error('Error Pairing:', e));
-    }
 });
 
-client.on('ready', () => console.log('✅ WhatsApp listo y conectado.'));
+client.on('ready', () => console.log('✅ WhatsApp Online!'));
 
 client.on('message_create', async msg => {
     if (msg.from === 'status@broadcast' || msg.fromMe) return;
@@ -123,10 +151,10 @@ client.on('message_create', async msg => {
     try {
         await chat.sendStateTyping();
         const prods = await getProducts();
-        const context = prods.map(p => `- ${p.name.toUpperCase()} ($${p.price} | Mayoreo: $${p.wholesale_price || 'N/A'})`).join('\n');
+        const context = formatContext(prods);
         const response = await askAI(msg.body, context);
         await msg.reply(response);
     } catch (e) { console.error('Error WA:', e); }
 });
 
-client.initialize().catch(err => console.error('Error inicializando WA:', err));
+client.initialize().catch(err => console.log('Error Initializing:', err));
