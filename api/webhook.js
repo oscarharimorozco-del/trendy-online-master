@@ -1,8 +1,6 @@
+
 import { createClient } from '@supabase/supabase-js';
 import fetch from 'node-fetch';
-
-// Vercel doesn't always have fetch in all node versions, but Node 18+ does.
-// If it fails, it's usually because process.env is missing or the IA is crashing.
 
 const PAGE_ACCESS_TOKEN = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN;
@@ -12,18 +10,18 @@ const supabase = createClient(
     process.env.VITE_SUPABASE_ANON_KEY
 );
 
-const storeInstruction = `Eres el Asesor Virtual de Gihart & Hersel (TIENDA FÍSICA).
-Tu objetivo es vender y dar información EXACTA.
+// REGLAS MAESTRAS (SIN ENVÍOS, PRECIOS REALES)
+const storeInstruction = `Eres el Curador Maestro de Gihart & Hersel.
+TONO: Sofisticado, elegante.
 
 REGLAS DE ORO:
-1. NO HACEMOS ENVÍOS: Bajo ninguna circunstancia menciones envíos, paquetería o entregas a domicilio. Todo es entrega personal o en tienda.
-2. PRECIOS: Respeta el catálogo. Mayoreo solo desde 6 piezas.
-3. NO INVENTES: Si no está en la lista de abajo, no lo tienes.
-
-ESTILO: Elegantemente breve. Usa negritas.`;
+1. NO HACEMOS ENVÍOS: Siempre di que la entrega es personal o en tienda física.
+2. PRECIOS: Público (1 pza), Mayoreo (6+ pzas). Usa estrictamente los precios del catálogo.
+3. NO INVENTES MODELOS.
+ESTILO: Breve y negritas.`;
 
 async function getProducts() {
-    const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase.from('products').select('*');
     return data || [];
 }
 
@@ -34,6 +32,7 @@ async function askAI(message, context) {
         if (data?.value) keys += "," + data.value;
     } catch (e) { }
 
+    // Extraer llaves
     const groqKeys = (keys.match(/gsk_[a-zA-Z0-9\-_]{30,70}/g) || []);
     const geminiKeys = (keys.match(/AIza[a-zA-Z0-9\-_]{30,70}/g) || []);
 
@@ -44,10 +43,7 @@ async function askAI(message, context) {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: [
-                        { role: 'system', content: storeInstruction + "\nContexto:\n" + context },
-                        { role: 'user', content: message }
-                    ],
+                    messages: [{ role: 'system', content: storeInstruction + "\nContexto:\n" + context }, { role: 'user', content: message }],
                     model: "llama-3.3-70b-versatile"
                 })
             });
@@ -70,8 +66,7 @@ async function askAI(message, context) {
             if (d.candidates?.[0]?.content?.parts?.[0]?.text) return d.candidates[0].content.parts[0].text;
         } catch (e) { }
     }
-
-    return "Gracias por escribir. Por el momento nuestro sistema está saturado, pero un asesor humano revisará su mensaje a la brevedad.";
+    return "Hola! Un asesor le atenderá pronto.";
 }
 
 export default async function handler(req, res) {
@@ -79,17 +74,15 @@ export default async function handler(req, res) {
         if (req.query['hub.verify_token'] === VERIFY_TOKEN) return res.send(req.query['hub.challenge']);
         return res.sendStatus(403);
     }
-
     if (req.method === 'POST') {
         const body = req.body;
         if (body.object === 'page') {
             for (const entry of body.entry) {
                 const event = entry.messaging?.[0];
                 if (event?.message?.text) {
-                    const products = await getProducts();
-                    const context = products.map(p => `- ${p.name.toUpperCase()} ($${p.price} MXN | Mayoreo: $${p.wholesale_price || 'N/A'})`).join('\n');
+                    const prods = await getProducts();
+                    const context = prods.map(p => `- ${p.name.toUpperCase()} ($${p.price} | Mayoreo: $${p.wholesale_price || 'N/A'})`).join('\n');
                     const reply = await askAI(event.message.text, context);
-
                     await fetch(`https://graph.facebook.com/v12.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, {
                         method: 'POST',
                         body: JSON.stringify({ recipient: { id: event.sender.id }, message: { text: reply } }),
@@ -100,5 +93,5 @@ export default async function handler(req, res) {
             return res.status(200).send('EVENT_RECEIVED');
         }
     }
-    return res.status(404).send('Not Found');
+    res.sendStatus(404);
 }
