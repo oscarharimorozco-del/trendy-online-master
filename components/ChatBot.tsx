@@ -41,15 +41,20 @@ export const ChatBot: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Agrupamos productos por categoría para un contexto más limpio
-      const groupedProducts = products.reduce((acc: any, p) => {
-        acc[p.category] = (acc[p.category] || "") + `${p.name} ($${p.price}), `;
-        return acc;
-      }, {});
+      const productsContext = products.map(p => {
+        const hasPromo = p.isPromotion && p.promoPrice && p.promoPrice > 0;
+        const publicPrice = p.price > 0 ? `$${p.price} MXN` : 'Consultar';
+        const wholesalePrice = p.wholesalePrice && p.wholesalePrice > 0 ? `$${p.wholesalePrice} MXN` : 'Consultar';
+        const promoPrice = hasPromo ? `$${p.promoPrice} MXN` : null;
+        const status = p.isSoldOut ? 'AGOTADO' : 'Disponible';
+        const sizes = p.sizes && p.sizes.length > 0 ? p.sizes.join(', ') : 'Consultar';
 
-      const productsContext = Object.entries(groupedProducts)
-        .map(([cat, list]) => `${cat}: ${list}`)
-        .join(' | ');
+        let line = `- ${p.name.toUpperCase()} (Cat: ${p.category}) | Precio: ${publicPrice}`;
+        if (hasPromo) line += ` | 🔥 PROMO: ${promoPrice}`;
+        line += ` | Mayoreo (6+): ${wholesalePrice}`;
+        line += ` | Tallas: ${sizes} | ${status}`;
+        return line;
+      }).join('\n');
 
       const result = await geminiService.chat(messages, userMsg, productsContext);
       const reply = result.text ?? 'Sin respuesta.';
@@ -94,7 +99,7 @@ export const ChatBot: React.FC = () => {
             {messages.map((m, i) => (
               <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                 <div className={`max-w-[85%] p-4 rounded-2xl text-[11px] leading-relaxed shadow-xl ${m.role === 'user' ? 'bg-cyan-600 text-white rounded-tr-none' :
-                    'bg-white/10 text-gray-300 rounded-tl-none border border-white/5'
+                  'bg-white/10 text-gray-300 rounded-tl-none border border-white/5'
                   }`}>
                   {m.text}
                 </div>

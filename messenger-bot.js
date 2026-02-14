@@ -23,19 +23,18 @@ const supabase = createClient(
     process.env.VITE_SUPABASE_ANON_KEY
 );
 
-const storeInstruction = `Eres el Asesor Virtual de Gihart & Hersel.
-Tu objetivo es vender y dar información EXACTA del catálogo.
+const storeInstruction = `Eres el Curador Maestro de Gihart & Hersel (TIENDA FÍSICA). 
+Tono sofisticado, elegante pero cercano. 
 
-REGLAS DE ORO (SÍGUELAS O FALLARÁS):
-1. **INFORMACIÓN EXACTA:** Solo usa los productos listados en el CONTEXTO.
-2. **TALLAS:** Si ves "S, M, L", responde "Chica, Mediana, Grande". Si ves "3XL", di "Talla 3XL". NO uses códigos raros como "PS" o "GG".
-3. **PRECIOS:**
-   - Precio Público: Es el precio por defecto.
-   - Mayoreo: Solo si compra 6 o más piezas. Menciónalo como una oportunidad de ahorro.
-3. **NO ALUCINES:** Si no encuentras exactamente lo que piden (ej. "Polo roja" y no hay), di: "No tengo polos rojas en este momento, pero mira estas opciones:" y lista lo que SÍ hay.
-4. **FORMATO:** Usa listas claras con precios. Ejemplo:
-   • [Nombre Exacto]: $[Precio]
-5. Sé amable, breve y sofisticado.`;
+REGLAS DE ORO:
+1. **NO HACEMOS ENVÍOS**: No menciones envíos a domicilio ni paquetería. Solo entregas personales o en tienda.
+2. **PRECIO PÚBLICO**: Es el precio unitario exacto del catálogo.
+3. **PRECIO MAYOREO**: Solo a partir de 6 piezas. Di siempre el precio POR PIEZA.
+4. **NO INVENTES**: Si no está en el catálogo, solicita información a un asesor.
+
+ESTILO:
+- Usa negritas para precios y nombres.
+- Sé breve y sofisticado.`;
 
 // FUNCIONES DE APOYO (Misma lógica que el bot de WhatsApp)
 async function getAIKeys() {
@@ -123,10 +122,19 @@ app.post('/webhook', async (req, res) => {
 
                 // Obtener contexto de productos
                 const products = await getProducts();
-                // MEJORA: Contexto más detallado con Tallas y Marca
                 const context = products.map(p => {
-                    const sizes = p.sizes && Array.isArray(p.sizes) ? p.sizes.join(', ') : 'Preguntar';
-                    return `- ${p.name} | Marca: ${p.brand || 'No especificada'} | Tallas: ${sizes} | Precio: $${p.price} | Mayoreo (6+): $${p.wholesale_price || 'N/A'}`;
+                    const hasPromo = p.is_promotion && p.promo_price > 0;
+                    const publicPrice = p.price > 0 ? `$${p.price} MXN` : 'Consultar';
+                    const wholesalePrice = p.wholesale_price > 0 ? `$${p.wholesale_price} MXN` : 'Consultar';
+                    const promoPrice = hasPromo ? `$${p.promo_price} MXN` : null;
+                    const status = p.is_sold_out ? 'AGOTADO' : 'Disponible';
+                    const sizes = p.sizes && Array.isArray(p.sizes) ? p.sizes.join(', ') : 'Consultar';
+
+                    let line = `- ${p.name.toUpperCase()} | Cat: ${p.category} | Precio: ${publicPrice}`;
+                    if (hasPromo) line += ` | 🔥 PROMO: ${promoPrice}`;
+                    line += ` | Mayoreo (6+): ${wholesalePrice}`;
+                    line += ` | Tallas: ${sizes} | ${status}`;
+                    return line;
                 }).join('\n');
 
                 // IA

@@ -43,7 +43,7 @@ async function generatePostContent(product) {
     Instrucciones:
     - Usa emojis de lujo/moda.
     - Sé breve y directo.
-    - Menciona que hacemos envíos.
+    - **NO MENCIONES ENVÍOS**.
     - Termina con un "Manda mensaje para apartar".`;
 
     // 1. Intentar con GROQ primero (Suele ser más rápido/estable)

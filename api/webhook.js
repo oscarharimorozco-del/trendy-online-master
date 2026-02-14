@@ -8,15 +8,18 @@ const supabase = createClient(
     process.env.VITE_SUPABASE_ANON_KEY
 );
 
-const storeInstruction = `Eres el Asesor Virtual de Gihart & Hersel.
-Tu objetivo es vender y dar información EXACTA del catálogo.
+const storeInstruction = `Eres el Asesor Virtual de Gihart & Hersel (TIENDA FÍSICA).
+Tu objetivo es vender y dar información EXACTA.
 
 REGLAS DE ORO:
-1. Solo usa los productos listados en el CONTEXTO.
-2. TALLAS: Si ves "S, M, L", responde "Chica, Mediana, Grande". Si ves "3XL", di "Talla 3XL". NO uses códigos raros.
-3. PRECIOS: Precio Público es el precio por defecto. Mayoreo solo aplica a partir de 6 piezas.
-4. NO ALUCINES: Si no encuentras lo que piden, di: "No tengo eso en este momento, pero mira estas opciones:" y lista lo que SÍ hay.
-5. Sé amable, breve y sofisticado.`;
+1. NO HACEMOS ENVÍOS: Bajo ninguna circunstancia menciones envíos a domicilio, paquetería o envíos nacionales. La entrega es personal o en tienda física.
+2. PRECIOS: Precio Público es por 1 pieza. Mayoreo solo aplica en 6 piezas o más (di precio unitario).
+3. NO INVENTES: Si no encuentras el modelo en el contexto de abajo, di que no lo manejas.
+4. TALLAS: Usa nombres claros (Chica, Mediana, Grande).
+
+ESTILO:
+- Sofisticado, breve (máximo 3 líneas).
+- Usa negritas para precios y modelos.`;
 
 async function getAIKeys() {
     let keysString = process.env.VITE_GEMINI_API_KEY || "";
@@ -54,28 +57,31 @@ async function askAI(message, context) {
                 });
                 const data = await res.json();
                 if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
-            } catch (e) { console.error("Error Groq:", e.message); }
+            } catch (e) { }
         }
     }
 
     // Probar Gemini
     if (allKeys.gemini.length > 0) {
-        for (const key of allKeys.gemini) {
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: `INSTRUCCIONES: ${storeInstruction}\nCONTEXTO:\n${context}\nMENSAJE:\n${message}` }] }]
-                    })
-                });
-                const data = await res.json();
-                if (data.candidates?.[0]?.content?.parts?.[0]?.text) return data.candidates[0].content.parts[0].text;
-            } catch (e) { console.error("Error Gemini:", e.message); }
+        const models = ["gemini-2.0-flash-lite", "gemini-flash-latest"];
+        for (const modelName of models) {
+            for (const key of allKeys.gemini) {
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: `INSTRUCCIONES: ${storeInstruction}\nCONTEXTO:\n${context}\nMENSAJE:\n${message}` }] }]
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.candidates?.[0]?.content?.parts?.[0]?.text) return data.candidates[0].content.parts[0].text;
+                } catch (e) { }
+            }
         }
     }
 
-    return "¡Hola! Gracias por escribir a Gihart & Hersel. Un asesor te atenderá pronto.";
+    return "¡Hola! Gracias por escribir a Gihart & Hersel. Un asesor personal le atenderá pronto.";
 }
 
 async function sendToMessenger(sender_psid, text) {
@@ -85,55 +91,37 @@ async function sendToMessenger(sender_psid, text) {
             body: JSON.stringify({ recipient: { id: sender_psid }, message: { text } }),
             headers: { 'Content-Type': 'application/json' }
         });
-        console.log('✅ Respuesta enviada a Messenger.');
-    } catch (e) {
-        console.error('❌ Error enviando a Messenger:', e.message);
-    }
+    } catch (e) { console.error('Error Messenger:', e); }
 }
 
 export default async function handler(req, res) {
-    // GET = Verificación del webhook
     if (req.method === 'GET') {
-        const mode = req.query['hub.mode'];
-        const token = req.query['hub.verify_token'];
-        const challenge = req.query['hub.challenge'];
-
-        if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-            console.log('✅ Webhook verificado.');
-            return res.status(200).send(challenge);
-        }
+        if (req.query['hub.verify_token'] === VERIFY_TOKEN) return res.send(req.query['hub.challenge']);
         return res.sendStatus(403);
     }
 
-    // POST = Mensaje entrante
     if (req.method === 'POST') {
         const body = req.body;
-
         if (body.object === 'page') {
             for (const entry of body.entry) {
-                const webhook_event = entry.messaging?.[0];
-                if (!webhook_event) continue;
-
-                const sender_psid = webhook_event.sender.id;
-
-                if (webhook_event.message?.text) {
-                    const userMessage = webhook_event.message.text;
-                    console.log(`📩 Messenger (${sender_psid}): ${userMessage}`);
-
+                const event = entry.messaging?.[0];
+                if (event?.message?.text) {
                     const products = await getProducts();
                     const context = products.map(p => {
-                        const sizes = p.sizes && Array.isArray(p.sizes) ? p.sizes.join(', ') : 'Preguntar';
-                        return `- ${p.name} | Tallas: ${sizes} | Precio: $${p.price} | Mayoreo (6+): $${p.wholesale_price || 'N/A'}`;
+                        const hasPromo = p.is_promotion && p.promo_price > 0;
+                        const pub = p.price > 0 ? `$${p.price} MXN` : 'Consultar';
+                        const promo = hasPromo ? ` | 🔥 PROMO: $${p.promo_price} MXN` : '';
+                        const whole = p.wholesale_price > 0 ? `$${p.wholesale_price} MXN` : 'Consultar';
+                        return `- ${p.name.toUpperCase()} (Cat: ${p.category}) | Precio: ${pub} ${promo} | Mayoreo (6+): ${whole} | Tallas: ${p.sizes?.join(', ') || 'Consultar'} | ${p.is_sold_out ? 'AGOTADO' : 'Disponible'}`;
                     }).join('\n');
 
-                    const aiResponse = await askAI(userMessage, context);
-                    await sendToMessenger(sender_psid, aiResponse);
+                    const aiResponse = await askAI(event.message.text, context);
+                    await sendToMessenger(event.sender.id, aiResponse);
                 }
             }
             return res.status(200).send('EVENT_RECEIVED');
         }
         return res.sendStatus(404);
     }
-
     return res.sendStatus(405);
 }

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "start": "node whatsapp-bot.js",
     "bot": "node whatsapp-bot.js",
     "post": "node facebook-autopost.js"
   },
