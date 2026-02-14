@@ -13,10 +13,9 @@ import fetch from 'node-fetch';
 
 dotenv.config();
 
-// --- 1. CONFIGURACIÓN DEL SERVIDOR (ARRANQUE INMEDIATO) ---
+// --- 1. SERVIDOR EXPRESS (INICIO RÁPIDO) ---
 const app = express();
 app.use(bodyParser.json());
-// Puerto 8080 es el estándar de Koyeb para evitar el 404
 const port = process.env.PORT || 8080;
 
 app.listen(port, '0.0.0.0', () => {
@@ -24,25 +23,27 @@ app.listen(port, '0.0.0.0', () => {
 });
 
 app.get('/', (req, res) => {
-    res.status(200).send('<h1>Status: Online 🚀</h1><p>Gihart & Hersel: WhatsApp & Messenger vinculados.</p><a href="/qr">Ver QR WhatsApp</a>');
+    res.status(200).send('<h1>Multi-Bot Activo 🚀</h1><p>WhatsApp & Messenger listos.</p><a href="/qr">Ver QR WhatsApp</a>');
 });
 
 let latestQR = "";
 app.get('/qr', async (req, res) => {
-    if (!latestQR) return res.send('<h1>Generando QR...</h1><script>setTimeout(()=>location.reload(), 5000)</script>');
+    if (!latestQR) return res.send('<h1>Generando QR...</h1><p>Espera 30 segundos y recarga. El bot está iniciando el motor de WhatsApp.</p><script>setTimeout(()=>location.reload(), 5000)</script>');
     try {
         const qrImage = await QRCodeNode.toDataURL(latestQR);
         res.send(`
-            <div style="text-align:center; padding:50px; font-family:sans-serif; background:#111; color:#fff; min-height:100vh;">
-                <h1>Escanea con WhatsApp</h1>
+            <div style="text-align:center; padding:50px; font-family:sans-serif; background:#000; color:#fff; min-height:100vh;">
+                <h1 style="color:#ff0080;">Vincular WhatsApp</h1>
                 <img src="${qrImage}" style="width:300px; border:10px solid #fff; border-radius:20px;" />
-                <script>setTimeout(()=>location.reload(), 10000)</script>
+                <p>Escanea este código con tu celular.</p>
+                <div style="margin-top:20px; color:#666;">Si el QR no cambia, espera a que la página se recargue sola.</div>
+                <script>setTimeout(()=>location.reload(), 15000)</script>
             </div>
         `);
     } catch (e) { res.status(500).send('Error QR'); }
 });
 
-// --- 2. LOGICA MESSENGER (INTEGRADA PARA KOYEB) ---
+// --- 2. LOGICA MESSENGER (MODO ULTRA-RÁPIDO) ---
 const VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN;
 const PAGE_ACCESS_TOKEN = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
 
@@ -53,6 +54,7 @@ app.get('/webhook', (req, res) => {
 
 app.post('/webhook', async (req, res) => {
     if (req.body.object === 'page') {
+        res.status(200).send('EVENT_RECEIVED'); // Responder rápido a Facebook
         for (const entry of req.body.entry) {
             const event = entry.messaging?.[0];
             if (event?.message?.text) {
@@ -63,7 +65,6 @@ app.post('/webhook', async (req, res) => {
                 await sendMessenger(event.sender.id, reply);
             }
         }
-        res.status(200).send('EVENT_RECEIVED');
     }
 });
 
@@ -74,18 +75,19 @@ async function sendMessenger(psid, text) {
             body: JSON.stringify({ recipient: { id: psid }, message: { text } }),
             headers: { 'Content-Type': 'application/json' }
         });
+        console.log('✅ Mensaje de Messenger enviado.');
     } catch (e) { console.error('Error Messenger:', e); }
 }
 
-// --- 3. IA Y DATOS (CEREBRO ÚNICO) ---
+// --- 3. IA Y SUPABASE ---
 const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
 
 const MASTER_INSTRUCTION = `Eres el Curador Maestro de Gihart & Hersel (TIENDA FÍSICA).
 REGLAS:
-1. NO HACEMOS ENVÍOS: Siempre di que la entrega es personal o en punto físico.
-2. PRECIOS: Público (1 pza), Mayoreo (6+ pzas). Respeta el catálogo.
+1. NO HACEMOS ENVÍOS. Todo es personal o en punto físico.
+2. PRECIOS: Público (1 pza), Mayoreo (6+ pzas).
 3. NO INVENTES MODELOS.
-TONO: Elegante y breve.`;
+TONO: Elegante, breve. Usa negritas.`;
 
 function formatContext(products) {
     return products.map(p => `- ${p.name.toUpperCase()} ($${p.price} | Mayoreo: $${p.wholesale_price || 'Consultar'})`).join('\n');
@@ -129,16 +131,16 @@ async function askAI(message, context) {
 
 // --- 4. WHATSAPP ---
 const client = new Client({
-    authStrategy: new LocalAuth({ clientId: "bot-gihart-v3" }),
+    authStrategy: new LocalAuth({ clientId: "bot-gihart-v4" }),
     puppeteer: {
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--shm-size=1gb']
     }
 });
 
-client.on('qr', qr => {
-    latestQR = qr;
-    qrcode.generate(qr, { small: true });
+client.on('qr', q => {
+    latestQR = q;
+    qrcode.generate(q, { small: true });
 });
 
 client.on('ready', () => console.log('✅ WhatsApp Online!'));
@@ -147,12 +149,10 @@ client.on('message_create', async msg => {
     if (msg.from === 'status@broadcast' || msg.fromMe) return;
     const chat = await msg.getChat();
     if (chat.isGroup) return;
-
     try {
         await chat.sendStateTyping();
         const prods = await getProducts();
-        const context = formatContext(prods);
-        const response = await askAI(msg.body, context);
+        const response = await askAI(msg.body, formatContext(prods));
         await msg.reply(response);
     } catch (e) { console.error('Error WA:', e); }
 });
