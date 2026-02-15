@@ -100,8 +100,17 @@ export default async function handler(req, res) {
             for (const entry of body.entry) {
                 const event = entry.messaging?.[0];
                 if (event?.message?.text) {
-                    const prods = await getProducts();
-                    const context = formatContext(prods);
+                    const query = event.message.text.toUpperCase();
+                    // Buscar productos que coincidan con la marca o modelo (AX, HB, etc)
+                    const { data: prods } = await supabase.from('products')
+                        .select('name, price, wholesalePrice, wholesale_price, category, is_sold_out, isSoldOut')
+                        .or(`name.ilike.%${query}%,category.ilike.%${query}%`)
+                        .limit(15);
+
+                    const context = prods && prods.length > 0
+                        ? formatContext(prods)
+                        : "No hay productos exactos en este momento, pregunta por existencias generales.";
+
                     const reply = await askAI(event.message.text, context);
 
                     await fetch(`https://graph.facebook.com/v12.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, {
