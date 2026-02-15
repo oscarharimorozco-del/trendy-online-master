@@ -1,8 +1,20 @@
 import { AspectRatio, ImageSize } from "../types";
+import { supabase } from "./supabase";
 
 // Gestión inteligente de múltiples llaves de API (Gemini y Groq)
-const getApiKeys = () => {
+// Gestión inteligente de múltiples llaves de API (Gemini y Groq)
+export const getApiKeys = async () => {
   const allKeys = (import.meta.env.VITE_GEMINI_API_KEY as string || "").split(',').map(k => k.trim()).filter(Boolean);
+
+  // Intentar cargar llaves desde Supabase (Donde están tus 6 llaves nuevas)
+  try {
+    const { data } = await supabase.from('settings').select('value').eq('key', 'gemini_keys').single();
+    if (data?.value) {
+      const dbKeys = data.value.split(/[\s,]+/).map((k: string) => k.trim()).filter(Boolean);
+      allKeys.push(...dbKeys);
+    }
+  } catch (e) { console.warn("No se pudieron cargar llaves de DB"); }
+
   const localKeys = localStorage.getItem('custom_gemini_keys');
   if (localKeys) {
     try {
@@ -14,8 +26,8 @@ const getApiKeys = () => {
   }
 
   return {
-    groq: allKeys.filter(k => k.startsWith('gsk_')),
-    gemini: allKeys.filter(k => k.startsWith('AIza'))
+    groq: [...new Set(allKeys.filter(k => k.startsWith('gsk_')))],
+    gemini: [...new Set(allKeys.filter(k => k.startsWith('AIza')))]
   };
 };
 
@@ -58,7 +70,7 @@ export const geminiService = {
   },
 
   chat: async (history: any[], message: string, productsContext: string, mode: 'store' | 'admin' = 'store', imagesBase64?: string[]) => {
-    const keys = getApiKeys();
+    const keys = await getApiKeys();
     let lastError: any = null;
 
     // 1. Intentar con GROQ primero (Si hay llaves)
@@ -125,7 +137,8 @@ export const geminiService = {
   },
 
   generateVoiceResponse: async (text: string) => {
-    const keys = getApiKeys().gemini;
+    const keysData = await getApiKeys();
+    const keys = keysData.gemini;
     for (const key of keys) {
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
