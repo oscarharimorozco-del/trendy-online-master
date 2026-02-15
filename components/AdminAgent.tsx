@@ -144,36 +144,28 @@ export const AdminAgent: React.FC<AdminAgentProps> = ({ onDraftsGenerated }) => 
       let systemPrompt = userMsg;
       if (currentImages.length > 0) {
         systemPrompt += `
-        INSTRUCCIÓN SUPREMA:
-        Eres un ASISTENTE DE EJECUCIÓN DIRECTA. Tu trabajo es obedecer y extraer datos EXPLICITOS del usuario.
-        NO INVENTES precios ni categorías si el usuario te da una instrucción clara.
-        
-        SI el usuario dice: "Precio 200", TODAS las imágenes valen 200.
-        SI el usuario dice: "Mayoreo 150", TODAS tienen precio mayoreo 150.
-        SI el usuario dice: "Categoría Accesorios", TODAS son Accesorios.
-        SI el usuario dice: "Tallas Chica y Mediana", SOLO usa tallas S y M.
-        SI el usuario dice: "Promo" o "Oferta", ACTIVA isPromotion.
-        SI el usuario da un Nombre, ÚSALO. Si no, GENERA uno corto y comercial basado en lo que ves (NUNCA uses el nombre del archivo original).
+        INSTRUCCIÓN DE AGENTE AUTÓNOMO (ESTILO MANUS):
+        Eres el Director Ejecutivo de Operaciones de Gihart & Hersel. Tienes control TOTAL sobre la tienda.
+        No eres un "chat", eres un AGENTE DE EJECUCIÓN. Tu objetivo es procesar las imágenes y órdenes para MANEJAR la interfaz.
 
-        Analiza las imágenes SOLO para describir lo que falta (color, detalles visuales) o poner nombre si no te dieron uno.
+        CAPACIDADES DE MANIOBRA:
+        1. PUBLICACIÓN: Si hay imágenes, genera el JSON para darlos de alta.
+        2. GESTIÓN: Si el usuario pide "borra", "cambia precio" o "busca", responde con la intención clara.
         
-        Responde SOLAMENTE con este JSON exacto:
-        [
-          {
-            "name": "Nombre exacto del usuario OR Generado (Ej: Polo Negra Lujo)",
-            "description": "Descripción técnica visual",
-            "price": 0,
-            "wholesalePrice": 0 (Si usuario no dio, calcula 80% del precio),
-            "promoPrice": 0 (Igual al precio, a menos que usuario diga otro),
-            "category": "Polos" | "Playeras" | "Accesorios" | "Cuadros" | "Pinturas",
-            "gender": "Hombre" | "Mujer" | "Unisex",
-            "sizes": ["S", "M", "L", "XL", "2XL"] (Filtra las que pida el usuario),
-            "isPromotion": true/false,
-            "imageIndex": 0
-          }
-        ]
+        REGLAS DE PRECIOS:
+        - Precio Público: 1 pza.
+        - Mayoreo: 6+ pzas (Sugerir siempre 20-30% menos que público si no te dan el dato).
+        - No inventes categorías: Usa solo [Polos, Playeras, Accesorios, Cuadros, Pinturas].
+
+        Responde SOLAMENTE con este formato JSON:
+        {
+          "action": "DRAFT" | "NAVIGATE" | "DELETE" | "UPDATE" | "TALK",
+          "data": { ... correspondientes a la acción ... },
+          "drafts": [ { "name": "...", "price": 0, ... } ],
+          "message": "Tu respuesta corta y ejecutiva al usuario"
+        }
         
-        IMPORTANTE: Obediencia ciega a los datos numéricos y de texto del usuario.`;
+        IMPORTANTE: Si el usuario dice "Precio 200", los drafts DEBEN tener 200. No pidas confirmación, EJECUTA.`;
       }
 
       const response = await geminiService.chat(
@@ -192,22 +184,25 @@ export const AdminAgent: React.FC<AdminAgentProps> = ({ onDraftsGenerated }) => 
       if (jsonMatch) {
         try {
           const jsonStr = jsonMatch[1] || jsonMatch[0];
-          const drafts: AutoProductDraft[] = JSON.parse(jsonStr);
+          const responseData = JSON.parse(jsonStr);
 
-          if (Array.isArray(drafts) && drafts.length > 0) {
+          if (responseData.drafts && Array.isArray(responseData.drafts)) {
             setMessages(prev => [...prev, {
               role: 'model',
-              text: `He preparado ${drafts.length} productos basados en tus imágenes. Revisa abajo y confirma para publicar.`,
-              drafts: drafts,
-              images: currentImages // Store original images with the message to map indexes
+              text: responseData.message || `He preparado ${responseData.drafts.length} productos.`,
+              drafts: responseData.drafts,
+              images: currentImages
             }]);
-            speak(`He generado ${drafts.length} borradores. Por favor revisa y confirma la publicación.`);
+            speak(responseData.message || "Borradores generados.");
+          } else if (responseData.action === 'NAVIGATE') {
+            setMessages(prev => [...prev, { role: 'model', text: `🧭 Cambiando vista a: ${responseData.data.target}` }]);
+            speak(`Entendido. Navegando a ${responseData.data.target}`);
+            // Aquí se dispararía la navegación real
           } else {
-            setMessages(prev => [...prev, { role: 'model', text: reply }]);
-            speak(reply);
+            setMessages(prev => [...prev, { role: 'model', text: responseData.message || reply }]);
+            speak(responseData.message || reply);
           }
         } catch (e) {
-          console.error("JSON Parse Error", e);
           setMessages(prev => [...prev, { role: 'model', text: reply }]);
           speak(reply);
         }
