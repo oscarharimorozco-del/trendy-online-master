@@ -1,8 +1,8 @@
-
 import { createClient } from '@supabase/supabase-js';
+import fetch from 'node-fetch';
 
 const PAGE_ACCESS_TOKEN = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
-const VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN;
+const VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN || 'trendy_secret_token_123';
 
 const supabase = createClient(
     process.env.VITE_SUPABASE_URL,
@@ -10,12 +10,11 @@ const supabase = createClient(
 );
 
 const MASTER_INSTRUCTION = `Eres el Agente de Élite de Gihart & Hersel.
-REGLAS DE ORO:
-1. ENTREGA: Solo personal en tienda. NO TENEMOS ENVÍOS.
-2. PRECIOS: Siempre menciona el PRECIO PÚBLICO y el PRECIO MAYOREO (desde 6 pzas) en tu respuesta.
-3. FIDELIDAD: Los códigos (AX, HB, PS, VS) son los nombres de las marcas.
-4. SI NO ESTÁ: Si no está en la lista, no lo tienes. No inventes.
-TONO: Sofisticado, muy breve y 100% veraz.`;
+REGLAS:
+1. ENTREGA: Solo personal en tienda. NO ENVÍOS.
+2. PRECIOS: Siempre da el PRECIO PÚBLICO y el MAYOREO (desde 6 pzas).
+3. FIDELIDAD: Los códigos (AX, HB, PS, VS) son marcas.
+TONO: Ejecutivo y breve.`;
 
 async function getProducts() {
     const { data } = await supabase.from('products')
