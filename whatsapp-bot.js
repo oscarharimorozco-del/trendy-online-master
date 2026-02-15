@@ -26,24 +26,30 @@ const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SU
 // REGLAS MAESTRAS DE PRECISIÓN (NOHallucination)
 const MASTER_INSTRUCTION = `Eres el Agente de Élite de Gihart & Hersel (TIENDA FÍSICA).
 REGLAS DE ORO (INVIOLABLES):
-1. ENTREGA: Solo personal o en tienda. NO TENEMOS ENVÍOS ni paquetería.
+1. ENTREGA: Solo personal en tienda física. NO TENEMOS ENVÍOS.
 2. PRECIOS: Público (1 pza), Mayoreo (6+ pzas).
-3. FIDELIDAD: Si el cliente pregunta por una marca o modelo, busca en el CATÁLOGO REAL de abajo. 
-4. SI NO ESTÁ: Si no encuentras el producto exacto, di: "No tengo ese modelo por el momento, pero tengo estos similares:" y menciona los que sí tienes. NUNCA inventes que tienes algo que no está en la lista.
-5. PRECIO CERO: Si ves un precio en $0, no lo menciones, di "Consultar con asesor".
+3. FIDELIDAD: Los códigos como 'AX', 'HB', 'PS', 'VS' son los nombres reales de las marcas. Úsalos con orgullo.
+4. EXACTITUD: Si el cliente pregunta por algo, revisa la lista. Si no está, di: "Ese modelo no lo tengo por ahora".
+5. NO INVENTES: No inventes precios ni disponibilidad.
 
-TONO: Ejecutivo, sofisticado y MUY BREVE (máximo 2-3 líneas).`;
+TONO: Sofisticado, muy breve y 100% veraz.`;
 
 async function getProducts() {
-    const { data } = await supabase.from('products').select('name, price, wholesale_price, category, gender').order('created_at', { ascending: false });
+    const { data } = await supabase.from('products')
+        .select('name, price, wholesalePrice, wholesale_price, category, gender, is_sold_out, isSoldOut')
+        .order('created_at', { ascending: false });
     return data || [];
 }
 
 function formatContext(prods) {
-    return prods.map(p => {
-        const wholesale = (p.wholesale_price && p.wholesale_price > 0) ? `$${p.wholesale_price}` : "Consultar";
-        return `- ${p.name.toUpperCase()}: Público $${p.price} | Mayoreo $${wholesale} [${p.category || 'General'}]`;
-    }).join('\n');
+    return prods
+        .filter(p => !p.is_sold_out && !p.isSoldOut) // No mostrar agotados
+        .map(p => {
+            const wholesale = p.wholesalePrice || p.wholesale_price || 0;
+            const wholesaleStr = wholesale > 0 ? `$${wholesale}` : "Consultar";
+            return `- ${p.name.toUpperCase()}: $${p.price} | Mayoreo $${wholesaleStr} [${p.category || 'Gral'}]`;
+        })
+        .join('\n');
 }
 
 async function askAI(message, context, imageBase64 = null) {
