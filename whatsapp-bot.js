@@ -24,17 +24,26 @@ const VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN;
 const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
 
 // REGLAS MAESTRAS DE PRECISIÓN (NOHallucination)
-const MASTER_INSTRUCTION = `Eres el Agente Oficial de Gihart & Hersel (TIENDA FÍSICA).
-REGLAS DE ORO:
-1. NO HACEMOS ENVÍOS. Todo es personal en punto físico.
-2. PRECIOS: Público (1 pza), Mayoreo (6+ pzas). 
-3. NO INVENTES: Si el producto no aparece en el CONTEXTO, di amablemente que no lo tienes disponible por ahora.
-4. NUNCA inventes precios. Usa solo los que se te proporcionan.
-TONO: Sofisticado, breve y honesto.`;
+const MASTER_INSTRUCTION = `Eres el Agente de Élite de Gihart & Hersel (TIENDA FÍSICA).
+REGLAS DE ORO (INVIOLABLES):
+1. ENTREGA: Solo personal o en tienda. NO TENEMOS ENVÍOS ni paquetería.
+2. PRECIOS: Público (1 pza), Mayoreo (6+ pzas).
+3. FIDELIDAD: Si el cliente pregunta por una marca o modelo, busca en el CATÁLOGO REAL de abajo. 
+4. SI NO ESTÁ: Si no encuentras el producto exacto, di: "No tengo ese modelo por el momento, pero tengo estos similares:" y menciona los que sí tienes. NUNCA inventes que tienes algo que no está en la lista.
+5. PRECIO CERO: Si ves un precio en $0, no lo menciones, di "Consultar con asesor".
+
+TONO: Ejecutivo, sofisticado y MUY BREVE (máximo 2-3 líneas).`;
 
 async function getProducts() {
     const { data } = await supabase.from('products').select('name, price, wholesale_price, category, gender').order('created_at', { ascending: false });
     return data || [];
+}
+
+function formatContext(prods) {
+    return prods.map(p => {
+        const wholesale = (p.wholesale_price && p.wholesale_price > 0) ? `$${p.wholesale_price}` : "Consultar";
+        return `- ${p.name.toUpperCase()}: Público $${p.price} | Mayoreo $${wholesale} [${p.category || 'General'}]`;
+    }).join('\n');
 }
 
 async function askAI(message, context, imageBase64 = null) {
@@ -94,7 +103,7 @@ app.post('/webhook', async (req, res) => {
             const event = entry.messaging?.[0];
             if (event?.message?.text) {
                 const prods = await getProducts();
-                const context = prods.map(p => `- ${p.name.toUpperCase()} ($${p.price} | Mayoreo: $${p.wholesale_price}) [${p.category} - ${p.gender}]`).join('\n');
+                const context = formatContext(prods);
                 const reply = await askAI(event.message.text, context);
                 await fetch(`https://graph.facebook.com/v12.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, {
                     method: 'POST',
@@ -139,7 +148,7 @@ client.on('message_create', async msg => {
     try {
         await chat.sendStateTyping();
         const prods = await getProducts();
-        const context = prods.map(p => `- ${p.name.toUpperCase()} ($${p.price} | Mayoreo: $${p.wholesale_price}) [${p.category} - ${p.gender}]`).join('\n');
+        const context = formatContext(prods);
 
         let img = null;
         if (msg.hasMedia) {
