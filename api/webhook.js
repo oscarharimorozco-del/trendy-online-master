@@ -9,14 +9,12 @@ const supabase = createClient(
     process.env.VITE_SUPABASE_ANON_KEY
 );
 
-const MASTER_INSTRUCTION = `Eres el Agente de Élite de Gihart & Hersel (TIENDA FÍSICA).
-REGLAS DE ORO (INVIOLABLES):
-1. ENTREGA: Solo personal en tienda física. NO TENEMOS ENVÍOS.
-2. PRECIOS: Público (1 pza), Mayoreo (6+ pzas).
-3. FIDELIDAD: Los códigos como 'AX', 'HB', 'PS', 'VS' son los nombres reales de las marcas.
-4. EXACTITUD: Si el cliente pregunta por algo, revisa la lista. Si no está, di: "Ese modelo no lo tengo por ahora".
-5. NO INVENTES: No inventes precios ni disponibilidad.
-
+const MASTER_INSTRUCTION = `Eres el Agente de Élite de Gihart & Hersel.
+REGLAS DE ORO:
+1. ENTREGA: Solo personal en tienda. NO TENEMOS ENVÍOS.
+2. PRECIOS: Siempre menciona el PRECIO PÚBLICO y el PRECIO MAYOREO (desde 6 pzas) en tu respuesta.
+3. FIDELIDAD: Los códigos (AX, HB, PS, VS) son los nombres de las marcas.
+4. SI NO ESTÁ: Si no está en la lista, no lo tienes. No inventes.
 TONO: Sofisticado, muy breve y 100% veraz.`;
 
 async function getProducts() {
@@ -32,7 +30,7 @@ function formatContext(prods) {
         .map(p => {
             const wholesale = p.wholesalePrice || p.wholesale_price || 0;
             const wholesaleStr = wholesale > 0 ? `$${wholesale}` : "Consultar";
-            return `- ${p.name.toUpperCase()}: Público $${p.price} | Mayoreo $${wholesaleStr}`;
+            return `- PRODUCTO: ${p.name.toUpperCase()} | PRECIO PÚBLICO: $${p.price} | PRECIO MAYOREO (6+ pzas): ${wholesaleStr}`;
         })
         .join('\n');
 }
