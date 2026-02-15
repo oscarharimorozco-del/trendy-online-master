@@ -7,18 +7,52 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
 import express from 'express';
+import bodyParser from 'body-parser'; // Added bodyParser import
+import fetch from 'node-fetch';
 import QRCodeNode from 'qrcode';
 
 dotenv.config();
 
 const app = express();
+app.use(bodyParser.json()); // Added bodyParser middleware
 const port = process.env.PORT || 8080;
 let latestQR = "";
+
+const PAGE_ACCESS_TOKEN = process.env.FACEBOOK_PAGE_ACCESS_TOKEN; // Added Facebook token
+const VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN; // Added Facebook verify token
 
 // CUALQUIER ERROR QUE PARE EL PROCESO DEBE SER CAPTURADO
 process.on('uncaughtException', (err) => console.error('CRITICAL ERROR:', err));
 
 app.get('/', (req, res) => res.status(200).send('<h1>Agente Gihart & Hersel v5.0</h1><p>Online y esperando.</p><a href="/qr">Ver QR</a>'));
+
+// WEBHOOK MESSENGER (INTEGRADO PARA KOYEB)
+app.get('/webhook', (req, res) => {
+    if (req.query['hub.verify_token'] === VERIFY_TOKEN) return res.send(req.query['hub.challenge']);
+    res.sendStatus(403);
+});
+
+app.post('/webhook', async (req, res) => {
+    if (req.body.object === 'page') {
+        res.status(200).send('EVENT_RECEIVED'); // Respuesta inmediata para Facebook
+        for (const entry of req.body.entry) {
+            const event = entry.messaging?.[0];
+            if (event?.message?.text) {
+                console.log(`📩 Recibido en Messenger: ${event.message.text}`);
+                const { data: prods } = await supabase.from('products').select('name, price, wholesale_price');
+                const context = prods.map(p => `- ${p.name.toUpperCase()} ($${p.price} | Mayoreo: $${p.wholesale_price || 'N/A'})`).join('\n');
+                const reply = await askAI(event.message.text, context);
+
+                await fetch(`https://graph.facebook.com/v12.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, {
+                    method: 'POST',
+                    body: JSON.stringify({ recipient: { id: event.sender.id }, message: { text: reply } }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+        }
+    }
+});
+
 app.get('/qr', async (req, res) => {
     if (!latestQR) return res.send('<h1>Iniciando WhatsApp...</h1><p>Recarga en 5 seg.</p><script>setTimeout(()=>location.reload(), 5000)</script>');
     const qrImage = await QRCodeNode.toDataURL(latestQR);
