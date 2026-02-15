@@ -10,11 +10,12 @@ const supabase = createClient(
 );
 
 const MASTER_INSTRUCTION = `Eres el Agente de Élite de Gihart & Hersel.
-REGLAS:
-1. ENTREGA: Solo personal en tienda. NO ENVÍOS.
-2. PRECIOS: Siempre da el PRECIO PÚBLICO y el MAYOREO (desde 6 pzas).
-3. FIDELIDAD: Los códigos (AX, HB, PS, VS) son marcas.
-TONO: Ejecutivo y breve.`;
+REGLAS DE ORO (OBLIGATORIAS):
+1. ENTREGA: Solo personal en tienda. NO TENEMOS ENVÍOS.
+2. PRECIOS: Siempre, sin excepción, menciona el PRECIO PÚBLICO y el PRECIO MAYOREO ($180 a partir de 6 pzas) en tu respuesta.
+3. FIDELIDAD: Los códigos (AX, HB, PS, VS) son marcas reales. Úsalas.
+4. SI NO ESTÁ: Si no está en el catálogo adjunto, di que no lo tienes.
+TONO: Sofisticado, muy breve y 100% veraz.`;
 
 async function getProducts() {
     const { data } = await supabase.from('products')
@@ -101,16 +102,20 @@ export default async function handler(req, res) {
                 const event = entry.messaging?.[0];
                 if (event?.message?.text) {
                     const query = event.message.text.toUpperCase();
-                    // Buscar productos que coincidan con la marca o modelo (AX, HB, etc)
-                    const { data: prods } = await supabase.from('products')
+                    let { data: prods } = await supabase.from('products')
                         .select('name, price, wholesalePrice, wholesale_price, category, is_sold_out, isSoldOut')
                         .or(`name.ilike.%${query}%,category.ilike.%${query}%`)
-                        .limit(15);
+                        .limit(10);
 
-                    const context = prods && prods.length > 0
-                        ? formatContext(prods)
-                        : "No hay productos exactos en este momento, pregunta por existencias generales.";
+                    if (!prods || prods.length === 0) {
+                        const { data: latest } = await supabase.from('products')
+                            .select('name, price, wholesalePrice, wholesale_price, category, is_sold_out, isSoldOut')
+                            .order('created_at', { ascending: false })
+                            .limit(12);
+                        prods = latest;
+                    }
 
+                    const context = formatContext(prods || []);
                     const reply = await askAI(event.message.text, context);
 
                     await fetch(`https://graph.facebook.com/v12.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, {
