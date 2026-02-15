@@ -93,31 +93,7 @@ async function askAI(message, context, imageBase64 = null) {
 }
 
 // ENDPOINTS
-app.get('/', (req, res) => res.status(200).send('<h1>Agente Gihart & Hersel v5.1</h1><p>Online.</p><a href="/qr">Ver QR</a>'));
-
-app.get('/webhook', (req, res) => {
-    if (req.query['hub.verify_token'] === VERIFY_TOKEN) return res.send(req.query['hub.challenge']);
-    res.sendStatus(403);
-});
-
-app.post('/webhook', async (req, res) => {
-    if (req.body.object === 'page') {
-        res.status(200).send('EVENT_RECEIVED');
-        for (const entry of req.body.entry) {
-            const event = entry.messaging?.[0];
-            if (event?.message?.text) {
-                const prods = await getProducts();
-                const context = formatContext(prods);
-                const reply = await askAI(event.message.text, context);
-                await fetch(`https://graph.facebook.com/v12.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, {
-                    method: 'POST',
-                    body: JSON.stringify({ recipient: { id: event.sender.id }, message: { text: reply } }),
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-        }
-    }
-});
+app.get('/', (req, res) => res.status(200).send('<h1>Agente Gihart & Hersel v5.5 (Solo WhatsApp)</h1><p>Online y dedicado.</p><a href="/qr">Ver QR</a>'));
 
 app.get('/qr', async (req, res) => {
     if (!latestQR) return res.send('<h1>Preparando WhatsApp...</h1><script>setTimeout(()=>location.reload(), 5000)</script>');

@@ -78,7 +78,20 @@ async function askAI(message, context) {
 
 export default async function handler(req, res) {
     if (req.method === 'GET') {
-        if (req.query['hub.verify_token'] === VERIFY_TOKEN) return res.send(req.query['hub.challenge']);
+        const mode = req.query['hub.mode'];
+        const token = req.query['hub.verify_token'];
+        const challenge = req.query['hub.challenge'];
+
+        // Si es solo una visita del navegador
+        if (!mode) return res.send(`🤖 Agente Messenger v5.6 Online. Webhook listo para validación de Facebook.`);
+
+        // Validación de Facebook: Acepta el token de env o el secreto por defecto
+        if (mode === 'subscribe' && (token === VERIFY_TOKEN || token === 'trendy_secret_token_123')) {
+            console.log('✅ Webhook de Messenger Validado!');
+            return res.status(200).send(challenge);
+        }
+
+        console.error('❌ Token de Verificación Erróneo');
         return res.sendStatus(403);
     }
 
