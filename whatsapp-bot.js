@@ -7,74 +7,35 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
 import express from 'express';
-import bodyParser from 'body-parser'; // Added bodyParser import
+import bodyParser from 'body-parser';
 import fetch from 'node-fetch';
 import QRCodeNode from 'qrcode';
 
 dotenv.config();
 
 const app = express();
-app.use(bodyParser.json()); // Added bodyParser middleware
+app.use(bodyParser.json());
 const port = process.env.PORT || 8080;
 let latestQR = "";
 
-const PAGE_ACCESS_TOKEN = process.env.FACEBOOK_PAGE_ACCESS_TOKEN; // Added Facebook token
-const VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN; // Added Facebook verify token
-
-// CUALQUIER ERROR QUE PARE EL PROCESO DEBE SER CAPTURADO
-process.on('uncaughtException', (err) => console.error('CRITICAL ERROR:', err));
-
-app.get('/', (req, res) => res.status(200).send('<h1>Agente Gihart & Hersel v5.0</h1><p>Online y esperando.</p><a href="/qr">Ver QR</a>'));
-
-// WEBHOOK MESSENGER (INTEGRADO PARA KOYEB)
-app.get('/webhook', (req, res) => {
-    if (req.query['hub.verify_token'] === VERIFY_TOKEN) return res.send(req.query['hub.challenge']);
-    res.sendStatus(403);
-});
-
-app.post('/webhook', async (req, res) => {
-    if (req.body.object === 'page') {
-        res.status(200).send('EVENT_RECEIVED'); // Respuesta inmediata para Facebook
-        for (const entry of req.body.entry) {
-            const event = entry.messaging?.[0];
-            if (event?.message?.text) {
-                console.log(`📩 Recibido en Messenger: ${event.message.text}`);
-                const { data: prods } = await supabase.from('products').select('name, price, wholesale_price');
-                const context = prods.map(p => `- ${p.name.toUpperCase()} ($${p.price} | Mayoreo: $${p.wholesale_price || 'N/A'})`).join('\n');
-                const reply = await askAI(event.message.text, context);
-
-                await fetch(`https://graph.facebook.com/v12.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, {
-                    method: 'POST',
-                    body: JSON.stringify({ recipient: { id: event.sender.id }, message: { text: reply } }),
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-        }
-    }
-});
-
-app.get('/qr', async (req, res) => {
-    if (!latestQR) return res.send('<h1>Iniciando WhatsApp...</h1><p>Recarga en 5 seg.</p><script>setTimeout(()=>location.reload(), 5000)</script>');
-    const qrImage = await QRCodeNode.toDataURL(latestQR);
-    res.send(`<div style="text-align:center;background:#000;color:#fff;min-height:100vh;padding:50px;font-family:sans-serif;">
-        <h1 style="color:#ff0080;">Vincular WhatsApp</h1>
-        <img src="${qrImage}" style="width:300px;border:10px solid #fff;border-radius:20px;"/>
-        <p>Escanea este código.</p>
-        <script>setTimeout(()=>location.reload(), 15000)</script>
-    </div>`);
-});
-
-app.listen(port, '0.0.0.0', () => console.log(`📡 Servidor en puerto ${port}`));
+const PAGE_ACCESS_TOKEN = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+const VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN;
 
 const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
 
-const MASTER_INSTRUCTION = `Eres el Agente Autónomo de Gihart & Hersel (TIENDA FÍSICA).
-REGLAS:
-1. NO HACEMOS ENVÍOS. Todo es personal o en tienda.
-2. PRECIOS: Público (1 pza), Mayoreo (6+ pzas).
-3. NO INVENTES MODELOS.
-USO DE IMAGEN: Si te mandan foto, busca parecido en el catálogo.
-TONO: Elegante y breve (Máx 3 líneas).`;
+// REGLAS MAESTRAS DE PRECISIÓN (NOHallucination)
+const MASTER_INSTRUCTION = `Eres el Agente Oficial de Gihart & Hersel (TIENDA FÍSICA).
+REGLAS DE ORO:
+1. NO HACEMOS ENVÍOS. Todo es personal en punto físico.
+2. PRECIOS: Público (1 pza), Mayoreo (6+ pzas). 
+3. NO INVENTES: Si el producto no aparece en el CONTEXTO, di amablemente que no lo tienes disponible por ahora.
+4. NUNCA inventes precios. Usa solo los que se te proporcionan.
+TONO: Sofisticado, breve y honesto.`;
+
+async function getProducts() {
+    const { data } = await supabase.from('products').select('name, price, wholesale_price, category, gender').order('created_at', { ascending: false });
+    return data || [];
+}
 
 async function askAI(message, context, imageBase64 = null) {
     let keys = process.env.VITE_GEMINI_API_KEY || "";
@@ -86,52 +47,89 @@ async function askAI(message, context, imageBase64 = null) {
     const groqKeys = (keys.match(/gsk_[a-zA-Z0-9\-_]{30,70}/g) || []);
     const geminiKeys = (keys.match(/AIza[a-zA-Z0-9\-_]{30,70}/g) || []);
 
-    if (imageBase64) {
-        for (const key of geminiKeys) {
+    const fullPrompt = `${MASTER_INSTRUCTION}\n\nCATÁLOGO REAL:\n${context}\n\nCliente dice: ${message || "¿Qué productos tienes?"}`;
+
+    // Preferir Groq para texto por velocidad y precisión lógica
+    if (!imageBase64) {
+        for (const key of groqKeys) {
             try {
-                const genAI = new GoogleGenerativeAI(key);
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-                const result = await model.generateContent([
-                    { text: MASTER_INSTRUCTION + "\nCONTEXTO:\n" + context + "\nPregunta: " + (message || "¿Qué es esto?") },
-                    { inlineData: { data: imageBase64, mimeType: "image/jpeg" } }
-                ]);
-                return result.response.text();
+                const groq = new Groq({ apiKey: key });
+                const completion = await groq.chat.completions.create({
+                    messages: [{ role: 'system', content: fullPrompt }],
+                    model: "llama-3.3-70b-versatile"
+                });
+                return completion.choices[0].message.content;
             } catch (e) { }
         }
     }
 
-    for (const key of groqKeys) {
-        try {
-            const groq = new Groq({ apiKey: key });
-            const completion = await groq.chat.completions.create({
-                messages: [{ role: 'system', content: MASTER_INSTRUCTION + "\nCONTEXTO:\n" + context }, { role: 'user', content: message }],
-                model: "llama-3.3-70b-versatile"
-            });
-            return completion.choices[0].message.content;
-        } catch (e) { }
-    }
-
+    // Fallback/Visión con Gemini
     for (const key of geminiKeys) {
         try {
             const genAI = new GoogleGenerativeAI(key);
             const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-            const result = await model.generateContent(`${MASTER_INSTRUCTION}\nContexto: ${context}\nMensaje: ${message}`);
+            const parts = [{ text: fullPrompt }];
+            if (imageBase64) parts.push({ inlineData: { data: imageBase64, mimeType: "image/jpeg" } });
+
+            const result = await model.generateContent(parts);
             return result.response.text();
         } catch (e) { }
     }
-    return "Lo siento, estoy teniendo un problema técnico. Un asesor humano te contactará pronto.";
+
+    return "Lo siento, un asesor humano le atenderá a la brevedad para darle información exacta.";
 }
 
+// ENDPOINTS
+app.get('/', (req, res) => res.status(200).send('<h1>Agente Gihart & Hersel v5.1</h1><p>Online.</p><a href="/qr">Ver QR</a>'));
+
+app.get('/webhook', (req, res) => {
+    if (req.query['hub.verify_token'] === VERIFY_TOKEN) return res.send(req.query['hub.challenge']);
+    res.sendStatus(403);
+});
+
+app.post('/webhook', async (req, res) => {
+    if (req.body.object === 'page') {
+        res.status(200).send('EVENT_RECEIVED');
+        for (const entry of req.body.entry) {
+            const event = entry.messaging?.[0];
+            if (event?.message?.text) {
+                const prods = await getProducts();
+                const context = prods.map(p => `- ${p.name.toUpperCase()} ($${p.price} | Mayoreo: $${p.wholesale_price}) [${p.category} - ${p.gender}]`).join('\n');
+                const reply = await askAI(event.message.text, context);
+                await fetch(`https://graph.facebook.com/v12.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, {
+                    method: 'POST',
+                    body: JSON.stringify({ recipient: { id: event.sender.id }, message: { text: reply } }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+        }
+    }
+});
+
+app.get('/qr', async (req, res) => {
+    if (!latestQR) return res.send('<h1>Preparando WhatsApp...</h1><script>setTimeout(()=>location.reload(), 5000)</script>');
+    const qrImage = await QRCodeNode.toDataURL(latestQR);
+    res.send(`<div style="text-align:center;background:#000;color:#fff;min-height:100vh;padding:50px;font-family:sans-serif;">
+        <h1 style="color:#00ff88;">Vincular WhatsApp G&H</h1>
+        <img src="${qrImage}" style="width:300px;border:10px solid #fff;border-radius:20px;"/>
+        <p>Escanea para activar la IA.</p>
+        <script>setTimeout(()=>location.reload(), 20000)</script>
+    </div>`);
+});
+
+app.listen(port, '0.0.0.0', () => console.log(`📡 Puerto ${port} Activo`));
+
+// WHATSAPP
 const client = new Client({
-    authStrategy: new LocalAuth({ clientId: "gihart-v5-final" }), // ID NUEVO PARA FORZAR QR
+    authStrategy: new LocalAuth({ clientId: "gihart-v5-1" }),
     puppeteer: {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--shm-size=1gb', '--disable-gpu']
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--shm-size=1gb']
     }
 });
 
 client.on('qr', (qr) => { latestQR = qr; qrcode.generate(qr, { small: true }); });
-client.on('ready', () => console.log('✅ WhatsApp listo!'));
+client.on('ready', () => console.log('✅ WA Connected'));
 
 client.on('message_create', async msg => {
     if (msg.from === 'status@broadcast' || msg.fromMe) return;
@@ -140,20 +138,18 @@ client.on('message_create', async msg => {
 
     try {
         await chat.sendStateTyping();
-        const { data: prods } = await supabase.from('products').select('name, price, wholesale_price');
-        const context = prods.map(p => `- ${p.name.toUpperCase()} ($${p.price} | Mayoreo: $${p.wholesale_price || 'N/A'})`).join('\n');
+        const prods = await getProducts();
+        const context = prods.map(p => `- ${p.name.toUpperCase()} ($${p.price} | Mayoreo: $${p.wholesale_price}) [${p.category} - ${p.gender}]`).join('\n');
 
-        let imgB64 = null;
+        let img = null;
         if (msg.hasMedia) {
             const m = await msg.downloadMedia();
-            if (m.mimetype.startsWith('image/')) imgB64 = m.data;
+            if (m.mimetype.startsWith('image/')) img = m.data;
         }
 
-        const reply = await askAI(msg.body, context, imgB64);
+        const reply = await askAI(msg.body, context, img);
         await msg.reply(reply);
-    } catch (e) {
-        console.error('Error WA:', e);
-    }
+    } catch (e) { console.error(e); }
 });
 
-client.initialize().catch(err => console.error('Fail WA:', err));
+client.initialize().catch(e => console.error(e));
